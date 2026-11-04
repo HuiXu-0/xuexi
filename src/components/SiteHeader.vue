@@ -118,6 +118,10 @@ function headerSearch() {
           </div>
         </div>
 
+        <button class="welcome-link" type="button" @click="router.push({ name: 'login' })">
+          登录 / 注册
+        </button>
+
         <button class="profile-btn" aria-label="个人中心" @click="router.push({ name: 'profile' })">
           <span class="avatar">学</span><span>个人中心</span>
         </button>

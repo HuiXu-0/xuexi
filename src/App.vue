@@ -2,8 +2,6 @@
 import { onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import IconSprite from './components/IconSprite.vue'
-import SiteHeader from './components/SiteHeader.vue'
-import SiteFooter from './components/SiteFooter.vue'
 import ModalHost from './components/ModalHost.vue'
 import ToastHost from './components/ToastHost.vue'
 import { detailContent, policyContent, feedbackSchemas } from './data/details.js'
@@ -75,19 +73,8 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocumentClick))
 <template>
   <IconSprite />
 
-  <div id="app">
-    <SiteHeader />
-
-    <main class="main container" id="top">
-      <router-view v-slot="{ Component }">
-        <transition enter-active-class="page-enter" leave-active-class="page-exit" mode="out-in">
-          <component :is="Component" />
-        </transition>
-      </router-view>
-    </main>
-
-    <SiteFooter />
-  </div>
+  <!-- 页面与布局由路由决定：平台页套 PlatformLayout，宣传/登录页套 WelcomeLayout -->
+  <router-view />
 
   <!-- 弹窗与 Toast 挂到 body，与原页面结构一致（都在 #app 之外） -->
   <Teleport to="body">
