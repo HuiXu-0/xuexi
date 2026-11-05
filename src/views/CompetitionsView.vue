@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import AppIcon from '../components/AppIcon.vue'
+import EmptyState from '../components/EmptyState.vue'
 import {
   competitionFilters,
   competitionStatusOptions,
@@ -10,6 +11,8 @@ import {
 } from '../data/pages.js'
 import { demoStore } from '../stores/demo.js'
 import { showToast } from '../composables/useToast.js'
+import { openCreateForm } from '../composables/useModal.js'
+import { createSchemas } from '../data/createSchemas.js'
 
 const category = ref('all')
 const status = ref('all')
@@ -43,6 +46,20 @@ const visible = computed(() => {
     return matchCat && matchStatus && matchYear && matchQuery
   })
 })
+
+/** 空状态操作：清掉全部筛选条件 */
+function resetFilter() {
+  category.value = 'all'
+  status.value = 'all'
+  year.value = '2026'
+  query.value = ''
+  showToast('已清除筛选条件，显示全部竞赛线索。')
+}
+
+/** 空状态操作：直接打开提交竞赛线索表单 */
+function openCreateCompetition(event) {
+  openCreateForm('competition', createSchemas, event)
+}
 
 function onYearChange() {
   showToast(
@@ -108,8 +125,7 @@ function onYearChange() {
       <div class="page-list">
         <input
           v-model="query"
-          class="page-input"
-          style="margin-bottom: 12px"
+          class="page-input mb-12"
           placeholder="搜索竞赛名称或方向…"
           aria-label="搜索竞赛"
         />
@@ -122,7 +138,16 @@ function onYearChange() {
           </div>
           <span class="page-badge" :class="c.statusClass">{{ c.statusLabel }}</span>
         </div>
-        <div v-if="!visible.length" class="page-empty">没有找到匹配的竞赛方向。</div>
+        <EmptyState
+          v-if="!visible.length"
+          icon="i-trophy"
+          message="没有找到匹配的竞赛线索"
+          hint="可尝试切换状态、年份或分类，或提交一条竞赛线索供核实。"
+          action-text="清除筛选条件"
+          @action="resetFilter"
+        >
+          <button class="mini-btn" @click="openCreateCompetition">提交竞赛线索</button>
+        </EmptyState>
       </div>
 
       <aside class="page-panel">
@@ -140,8 +165,7 @@ function onYearChange() {
           </div>
         </div>
         <button
-          class="solid-btn"
-          style="width: 100%; justify-content: center; margin-top: 12px"
+          class="solid-btn w-full justify-center mt-12"
           data-route="resources"
         >
           查找备赛资源

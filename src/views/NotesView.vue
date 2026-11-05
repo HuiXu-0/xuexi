@@ -1,9 +1,12 @@
 <script setup>
 import { ref, computed } from 'vue'
 import AppIcon from '../components/AppIcon.vue'
+import EmptyState from '../components/EmptyState.vue'
 import { noteFilters, notes } from '../data/pages.js'
 import { demoStore, toggleSave } from '../stores/demo.js'
 import { showToast } from '../composables/useToast.js'
+import { openCreateForm } from '../composables/useModal.js'
+import { createSchemas } from '../data/createSchemas.js'
 
 const category = ref('all')
 const query = ref('')
@@ -40,6 +43,18 @@ const visible = computed(() => {
 function onSave(title) {
   const saved = toggleSave(title)
   showToast(saved ? '已添加到本地演示收藏。' : '已取消本地演示收藏。')
+}
+
+/** 空状态操作：清掉筛选与关键词 */
+function resetFilter() {
+  category.value = 'all'
+  query.value = ''
+  showToast('已清除筛选条件，显示全部学习笔记。')
+}
+
+/** 空状态操作：直接打开发布笔记表单 */
+function openCreateNote(event) {
+  openCreateForm('note', createSchemas, event)
 }
 </script>
 
@@ -114,9 +129,16 @@ function onSave(title) {
         </div>
       </article>
 
-      <div v-if="!visible.length" class="page-empty">
-        没有找到匹配的演示内容。可尝试更短关键词，或在正式平台提交资源建议。
-      </div>
+      <EmptyState
+        v-if="!visible.length"
+        icon="i-book"
+        message="没有找到匹配的学习笔记"
+        hint="可尝试更短的关键词、切换到「全部」分类，或发布一篇你自己的笔记。"
+        action-text="清除筛选条件"
+        @action="resetFilter"
+      >
+        <button class="mini-btn" @click="openCreateNote">发布学习笔记</button>
+      </EmptyState>
     </div>
   </section>
 </template>

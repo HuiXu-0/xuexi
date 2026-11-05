@@ -46,7 +46,7 @@ const intro = computed(() =>
   isRegister.value
     ? {
         kicker: 'JOIN THE CAMPUS',
-        lead: '加入校园，',
+        lead: '欢迎加入，',
         accent: '开启你的学习旅程。',
         desc: '注册一个账号，把课程笔记、项目案例和小组讨论沉淀成可持续积累的个人学习空间。',
         benefits: [
@@ -69,6 +69,7 @@ const intro = computed(() =>
 )
 
 const title = computed(() => (isRegister.value ? '创建你的学习账号' : '登录校园学习平台'))
+
 const subtitle = computed(() =>
   isRegister.value
     ? '填写基础信息，先体验注册表单。正式版需完成校园身份验证。'

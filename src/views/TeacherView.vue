@@ -93,7 +93,7 @@ function onAdminAction(action, id) {
               <strong>{{ r.title }}</strong>
               <p>{{ r.desc }}</p>
               <small>{{ r.meta }}</small>
-              <div class="page-actions" style="margin-top: 9px">
+              <div class="page-actions mt-9">
                 <button class="mini-btn" @click="onAdminAction('review-recommendation', r.id)">
                   查看授权流程
                 </button>
@@ -123,9 +123,8 @@ function onAdminAction(action, id) {
           </div>
         </div>
         <button
-          class="outline-btn"
+          class="outline-btn w-full justify-center mt-12"
           data-route="forum"
-          style="width: 100%; justify-content: center; margin-top: 12px"
         >
           查看学习论坛
         </button>
@@ -141,10 +140,10 @@ function onAdminAction(action, id) {
           </div>
           <span class="page-badge">独立授权</span>
         </div>
-        <p style="font-size: 12px; color: var(--text-soft); line-height: 1.8; margin: 0">
+        <p class="text-soft-12">
           普通教师没有默认发布校级通知的权限。具备授权的内容管理员可以创建、编辑、设定有效期、发布、撤回和归档正式通知，并保留变更记录。
         </p>
-        <div class="page-actions" style="margin-top: 12px">
+        <div class="page-actions mt-12">
           <button class="mini-btn" @click="onAdminAction('notice-permission')">检查演示权限</button>
           <button class="mini-btn" data-route="admin">查看平台管理端（演示）</button>
         </div>

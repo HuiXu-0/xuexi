@@ -102,20 +102,20 @@ function reset() {
           <div class="form-grid-two">
             <div class="form-row">
               <label for="planLevel">当前基础</label>
-              <select id="planLevel" v-model="level" class="page-select" style="width: 100%">
+              <select id="planLevel" v-model="level" class="page-select select-full">
                 <option v-for="l in plannerLevels" :key="l">{{ l }}</option>
               </select>
             </div>
             <div class="form-row">
               <label for="planHours">每周可投入时间</label>
-              <select id="planHours" v-model.number="hours" class="page-select" style="width: 100%">
+              <select id="planHours" v-model.number="hours" class="page-select select-full">
                 <option v-for="h in plannerHours" :key="h.value" :value="h.value">{{ h.label }}</option>
               </select>
             </div>
           </div>
           <div class="form-row">
             <label for="planDuration">期望周期</label>
-            <select id="planDuration" v-model.number="duration" class="page-select" style="width: 100%">
+            <select id="planDuration" v-model.number="duration" class="page-select select-full">
               <option v-for="d in plannerDurations" :key="d.value" :value="d.value">{{ d.label }}</option>
             </select>
           </div>
@@ -125,7 +125,7 @@ function reset() {
               id="planDifficulty"
               v-model="difficulty"
               placeholder="例如：不知道先学什么、看完教程但不会动手…"
-              style="min-height: 85px"
+              class="textarea-lg"
             ></textarea>
           </div>
           <button class="solid-btn" type="submit">
@@ -177,7 +177,7 @@ function reset() {
         </div>
       </div>
 
-      <div class="page-actions" style="margin-top: 14px">
+      <div class="page-actions mt-14">
         <button class="mini-btn" data-route="notes">浏览学习笔记</button>
         <button class="mini-btn" data-route="resources">浏览资源导航</button>
         <button class="mini-btn" @click="reset">重新规划</button>

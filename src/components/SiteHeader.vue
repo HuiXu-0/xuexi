@@ -1,23 +1,36 @@
 <script setup>
-import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppIcon from './AppIcon.vue'
 import { navItems, notifications } from '../data/content.js'
+import { profileRoles } from '../data/pages.js'
 import { showToast } from '../composables/useToast.js'
+import { useTheme, toggleTheme } from '../composables/useTheme.js'
 
 const route = useRoute()
 const router = useRouter()
+const theme = useTheme()
 
 const navOpen = ref(false)
 const notifOpen = ref(false)
+const roleOpen = ref(false)
 const notifRef = ref(null)
 const notifBtnRef = ref(null)
+const roleRef = ref(null)
+
+/** 角色入口：教师工作台 / 管理员端 / 学习规划 Agent */
+const roleItems = profileRoles
+
+const themeLabel = computed(() =>
+  theme.value === 'dark' ? '切换到浅色模式' : '切换到深色模式'
+)
 
 watch(
   () => route.path,
   () => {
     navOpen.value = false
     notifOpen.value = false
+    roleOpen.value = false
   }
 )
 
@@ -25,12 +38,16 @@ function onOutsideClick(e) {
   if (notifOpen.value && notifRef.value && !notifRef.value.contains(e.target) && e.target !== notifBtnRef.value) {
     notifOpen.value = false
   }
+  if (roleOpen.value && roleRef.value && !roleRef.value.contains(e.target)) {
+    roleOpen.value = false
+  }
 }
 
 function onKeydown(e) {
   if (e.key === 'Escape') {
     navOpen.value = false
     notifOpen.value = false
+    roleOpen.value = false
   }
 }
 
@@ -54,6 +71,11 @@ function headerSearch() {
   requestAnimationFrame(() => {
     document.getElementById('globalSearch')?.focus()
   })
+}
+
+function onThemeToggle() {
+  const next = toggleTheme()
+  showToast(next === 'dark' ? '已切换到深色模式。' : '已切换到浅色模式。')
 }
 </script>
 
@@ -81,6 +103,10 @@ function headerSearch() {
       </a>
 
       <nav class="nav" :class="{ open: navOpen }" aria-label="主导航">
+        <!--
+          手机端主导航已由底部 tab 承担，汉堡菜单里不再重复列出，
+          只保留角色入口与登录。窄屏桌面（data-device=desktop）仍显示完整导航。
+        -->
         <button
           v-for="item in navItems"
           :key="item.nav"
@@ -89,6 +115,18 @@ function headerSearch() {
         >
           {{ item.label }}
         </button>
+
+        <!-- 移动端顶栏空间有限，把角色入口与登录收进汉堡菜单 -->
+        <div class="nav-mobile-only">
+          <button
+            v-for="r in roleItems"
+            :key="r.route"
+            @click="router.push({ name: r.route })"
+          >
+            {{ r.title }}
+          </button>
+          <button @click="router.push({ name: 'login' })">登录 / 注册</button>
+        </div>
       </nav>
 
       <div class="header-actions">
@@ -117,6 +155,47 @@ function headerSearch() {
             </button>
           </div>
         </div>
+
+        <!-- 角色工作台入口：教师 / 管理员 / 学习规划，避免只能从个人中心二级绕进去 -->
+        <div class="action-wrap role-wrap" ref="roleRef">
+          <button
+            class="icon-btn"
+            aria-label="切换工作台"
+            title="切换工作台"
+            :aria-expanded="String(roleOpen)"
+            @click.stop="roleOpen = !roleOpen"
+          >
+            <AppIcon name="i-grid" />
+          </button>
+          <div class="notification-pop role-pop" :class="{ open: roleOpen }">
+            <h3>切换工作台</h3>
+            <button
+              v-for="r in roleItems"
+              :key="r.route"
+              class="role-pop-item"
+              type="button"
+              @click="router.push({ name: r.route })"
+            >
+              <span class="role-pop-icon"><AppIcon :name="r.icon" /></span>
+              <span class="role-pop-text">
+                <strong>{{ r.title }}</strong>
+                <small>{{ r.desc }}</small>
+              </span>
+              <AppIcon name="i-arrow" />
+            </button>
+            <p class="role-pop-note">当前为原型体验入口，不代表真实授权。</p>
+          </div>
+        </div>
+
+        <!-- 深色模式切换：此前只有欢迎页有，平台内想切主题必须先退回宣传页 -->
+        <button
+          class="icon-btn"
+          :aria-label="themeLabel"
+          :title="themeLabel"
+          @click="onThemeToggle"
+        >
+          <AppIcon :name="theme === 'dark' ? 'i-sun' : 'i-moon'" />
+        </button>
 
         <button class="welcome-link" type="button" @click="router.push({ name: 'login' })">
           登录 / 注册

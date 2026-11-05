@@ -1,8 +1,12 @@
 <script setup>
 import { ref, computed } from 'vue'
 import AppIcon from '../components/AppIcon.vue'
+import EmptyState from '../components/EmptyState.vue'
 import { caseFilters, cases } from '../data/pages.js'
 import { demoStore } from '../stores/demo.js'
+import { openCreateForm } from '../composables/useModal.js'
+import { createSchemas } from '../data/createSchemas.js'
+import { showToast } from '../composables/useToast.js'
 
 const category = ref('all')
 const query = ref('')
@@ -39,6 +43,18 @@ const visible = computed(() => {
     return matchCat && matchQuery
   })
 })
+
+/** 空状态操作：清掉筛选与关键词 */
+function resetFilter() {
+  category.value = 'all'
+  query.value = ''
+  showToast('已清除筛选条件，显示全部实践案例。')
+}
+
+/** 空状态操作：直接打开发布案例表单 */
+function openCreateCase(event) {
+  openCreateForm('case', createSchemas, event)
+}
 </script>
 
 <template>
@@ -109,9 +125,16 @@ const visible = computed(() => {
         </div>
       </article>
 
-      <div v-if="!visible.length" class="page-empty">
-        没有找到匹配的演示内容。可尝试更短关键词，或在正式平台提交资源建议。
-      </div>
+      <EmptyState
+        v-if="!visible.length"
+        icon="i-spark"
+        message="没有找到匹配的实践案例"
+        hint="可尝试更短的关键词、切换到「全部」分类，或发布你自己的项目案例。"
+        action-text="清除筛选条件"
+        @action="resetFilter"
+      >
+        <button class="mini-btn" @click="openCreateCase">发布项目案例</button>
+      </EmptyState>
     </div>
 
     <div class="page-section">
@@ -123,7 +146,7 @@ const visible = computed(() => {
           </div>
           <span class="page-badge blue">授权优先</span>
         </div>
-        <p style="font-size: 12px; color: var(--text-soft); line-height: 1.8; margin: 0">
+        <p class="text-soft-12">
           涉及共同作品时，应按平台规则确认相关贡献者的授权要求。作者可以选择只公开摘要和演示，不公开完整文档、源代码或尚未发表的细节。
         </p>
       </div>

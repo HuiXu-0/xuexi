@@ -1,9 +1,12 @@
 <script setup>
 import { ref, computed } from 'vue'
 import AppIcon from '../components/AppIcon.vue'
+import EmptyState from '../components/EmptyState.vue'
 import { forumGroupFilters, forumGroups, forumPostsSeed, forumRules } from '../data/pages.js'
 import { demoStore, toggleJoin } from '../stores/demo.js'
 import { showToast } from '../composables/useToast.js'
+import { openCreateForm } from '../composables/useModal.js'
+import { createSchemas } from '../data/createSchemas.js'
 
 const groupFilter = ref('all')
 const groupQuery = ref('')
@@ -75,6 +78,18 @@ function onJoin(group) {
       : `已撤销本地演示加入状态：${group.title}`
   )
   void joinedLabel
+}
+
+/** 空状态的操作：清掉筛选与关键词，回到完整列表 */
+function resetGroupFilter() {
+  groupFilter.value = 'all'
+  groupQuery.value = ''
+  showToast('已清除筛选条件，显示全部学习小组。')
+}
+
+/** 空状态的操作：直接打开发布讨论表单 */
+function openCreatePost(event) {
+  openCreateForm('post', createSchemas, event)
 }
 </script>
 
@@ -162,9 +177,14 @@ function onJoin(group) {
         </div>
       </article>
 
-      <div v-if="!visibleGroups.length" class="page-empty">
-        没有找到匹配的演示内容。可尝试更短关键词，或在正式平台提交资源建议。
-      </div>
+      <EmptyState
+        v-if="!visibleGroups.length"
+        icon="i-users"
+        message="没有找到匹配的学习小组"
+        hint="可尝试更短的关键词、切换到「全部」筛选，或在正式平台提交资源建议。"
+        action-text="清除筛选条件"
+        @action="resetGroupFilter"
+      />
     </div>
 
     <div class="page-section">
@@ -182,8 +202,7 @@ function onJoin(group) {
         <div class="page-list">
           <input
             v-model="postQuery"
-            class="page-input"
-            style="margin-bottom: 12px"
+            class="page-input mb-12"
             placeholder="搜索讨论标题或小组…"
             aria-label="搜索近期讨论"
           />
@@ -196,7 +215,14 @@ function onJoin(group) {
             </div>
             <span class="page-badge" :class="p.statusClass">{{ p.status }}</span>
           </div>
-          <div v-if="!visiblePosts.length" class="page-empty">没有找到匹配的讨论。</div>
+          <EmptyState
+            v-if="!visiblePosts.length"
+            icon="i-message"
+            message="没有找到匹配的讨论"
+            hint="换个关键词，或发起一条新讨论。"
+            action-text="发起新讨论"
+            @action="openCreatePost"
+          />
         </div>
 
         <aside class="page-panel">
@@ -206,7 +232,7 @@ function onJoin(group) {
               <p>帮助交流保持清晰和可复用。</p>
             </div>
           </div>
-          <ul style="margin: 0; padding-left: 18px; color: var(--text-soft); font-size: 11px; line-height: 2">
+          <ul class="rules-list">
             <li v-for="r in forumRules" :key="r">{{ r }}</li>
           </ul>
           <div class="page-callout">

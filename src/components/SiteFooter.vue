@@ -14,7 +14,7 @@ import { footerLinks } from '../data/content.js'
             <span class="brand-title">校园学习平台</span>
           </div>
         </div>
-        <span style="font-weight: 400; color: var(--text-faint)">· 学习资源、实践成果与知识协作</span>
+        <span class="footer-tagline">· 学习资源、实践成果与知识协作</span>
       </div>
 
       <div class="footer-links">

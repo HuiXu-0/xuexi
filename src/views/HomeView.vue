@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import AppIcon from '../components/AppIcon.vue'
 import HeroCanvas from '../components/HeroCanvas.vue'
@@ -9,6 +9,7 @@ import {
   homeActivities,
   discoverFilters,
   heroSuggestions,
+  siteNotices,
 } from '../data/content.js'
 import { useSearch, runSearch, clearSearch } from '../composables/useSearch.js'
 import { showToast } from '../composables/useToast.js'
@@ -18,6 +19,32 @@ const search = useSearch()
 
 const query = ref('')
 const discoverFilter = ref('all')
+const noticeIndex = ref(0)
+const searchWrapRef = ref(null)
+
+/* 公告自动轮播：桌面端手动点击圆点切换，移动端自动轮播 */
+let noticeTimer = 0
+
+onMounted(() => {
+  noticeTimer = setInterval(() => {
+    noticeIndex.value = (noticeIndex.value + 1) % siteNotices.length
+  }, 6000)
+  document.addEventListener('click', onOutsideSearch)
+})
+
+onBeforeUnmount(() => {
+  clearInterval(noticeTimer)
+  document.removeEventListener('click', onOutsideSearch)
+})
+
+/** 点击搜索区域之外时收起结果浮层 */
+function onOutsideSearch(e) {
+  if (!search.active) return
+  if (searchWrapRef.value && !searchWrapRef.value.contains(e.target)) {
+    clearSearch()
+    query.value = ''
+  }
+}
 
 const filteredDiscover = computed(() =>
   discoverFilter.value === 'all'
@@ -60,13 +87,23 @@ function discoverAll() {
 
 <template>
   <div>
-    <!-- 官方通知 -->
+    <!-- 官方通知：多条公告轮播 -->
     <section class="notice-strip" aria-label="官方通知">
       <div class="notice-label"><AppIcon name="i-bellring" />官方通知</div>
       <div class="notice-text">
-        <span class="tiny-status">演示公告</span>
-        <strong>校园学习平台试运行说明（示例公告）</strong>
-        <span style="color: var(--text-faint); font-size: 10px; white-space: nowrap">平台示例数据</span>
+        <span class="tiny-status">{{ siteNotices[noticeIndex].tag }}</span>
+        <strong>{{ siteNotices[noticeIndex].title }}</strong>
+        <span class="notice-note">{{ siteNotices[noticeIndex].note }}</span>
+      </div>
+      <div class="notice-controls">
+        <button
+          v-for="(n, i) in siteNotices"
+          :key="n.title"
+          class="notice-dot"
+          :class="{ active: i === noticeIndex }"
+          :aria-label="`查看第 ${i + 1} 条公告`"
+          @click="noticeIndex = i"
+        ></button>
       </div>
       <button class="text-link" data-item="notice-1">
         查看通知 <AppIcon name="i-arrow" />
@@ -89,23 +126,55 @@ function discoverAll() {
             从一份笔记、一个项目案例或一次学习交流开始。连接课程与实践经验，发现适合自己的学习资源和同行者。
           </p>
 
-          <form class="search-shell" @submit.prevent="submitSearch">
-            <div class="search-icon">
-              <AppIcon name="i-search" style="width: 21px; height: 21px" />
+          <div ref="searchWrapRef">
+            <form class="search-shell" @submit.prevent="submitSearch">
+              <div class="search-icon">
+                <AppIcon name="i-search" class="icon-lg" />
+              </div>
+              <label class="sr-only" for="globalSearch">搜索学习内容</label>
+              <input
+                id="globalSearch"
+                v-model="query"
+                type="search"
+                placeholder="搜索笔记、项目案例、竞赛或学习方向…"
+                autocomplete="off"
+                @keydown="clearOnEscape"
+              />
+              <button class="search-btn" type="submit">
+                开始探索 <AppIcon name="i-arrow" />
+              </button>
+            </form>
+
+            <!-- 搜索结果浮层：直接在输入框下方展开，不再把结果推到 Hero 之外的下一个区块 -->
+            <div v-if="search.active" class="search-dropdown" aria-live="polite">
+              <div class="search-dropdown-head">
+                <strong>{{ search.title }}</strong>
+                <span>{{ search.count }} 条演示匹配</span>
+              </div>
+
+              <div v-if="search.results.length" class="search-dropdown-list">
+                <button
+                  v-for="(r, i) in search.results"
+                  :key="i"
+                  class="search-dropdown-item"
+                  type="button"
+                  @click="openResult(r)"
+                >
+                  <span class="result-type">{{ r.typeLabel }}</span>
+                  <span class="search-dropdown-text">
+                    <strong>{{ r.heading }}</strong>
+                    <small>{{ r.desc.slice(0, 72) }}</small>
+                  </span>
+                  <AppIcon name="i-arrow" />
+                </button>
+              </div>
+
+              <div v-else class="search-dropdown-empty">
+                <AppIcon name="i-info" />
+                <span>当前演示内容中没有匹配条目。可以尝试更短的关键词或选择相近方向。</span>
+              </div>
             </div>
-            <label class="sr-only" for="globalSearch">搜索学习内容</label>
-            <input
-              id="globalSearch"
-              v-model="query"
-              type="search"
-              placeholder="搜索笔记、项目案例、竞赛或学习方向…"
-              autocomplete="off"
-              @keydown="clearOnEscape"
-            />
-            <button class="search-btn" type="submit">
-              开始探索 <AppIcon name="i-arrow" />
-            </button>
-          </form>
+          </div>
 
           <div class="suggestions">
             <span>试试：</span>
@@ -146,30 +215,6 @@ function discoverAll() {
             <span>个人成长<small>方向 · 规划 · 展示</small></span>
           </div>
         </div>
-      </div>
-    </section>
-
-    <!-- 搜索结果 -->
-    <section class="search-results" :class="{ open: search.active }" aria-live="polite">
-      <div class="results-head">
-        <strong>{{ search.title }}</strong>
-        <span>{{ search.active ? `${search.count} 条演示匹配` : '演示结果' }}</span>
-      </div>
-
-      <div v-if="search.active && search.results.length">
-        <div v-for="(r, i) in search.results" :key="i" class="result-item">
-          <span class="result-type">{{ r.typeLabel }}</span>
-          <div class="result-main">
-            <strong>{{ r.heading }}</strong>
-            <small>{{ r.desc.slice(0, 100) }}</small>
-          </div>
-          <button class="open-card" @click="openResult(r)">打开</button>
-          <span class="demo-label">演示</span>
-        </div>
-      </div>
-
-      <div v-if="search.active && !search.results.length" class="empty-state">
-        当前演示内容中没有匹配条目。你可以尝试更短的关键词或选择相近方向。正式平台应基于用户有权限访问的真实内容返回结果。
       </div>
     </section>
 
@@ -297,7 +342,7 @@ function discoverAll() {
               <span><AppIcon name="i-users" />成员数待接入</span>
               <span><AppIcon name="i-message" />讨论内容示例</span>
             </div>
-            <div style="margin-top: 15px">
+            <div class="mt-15">
               <button class="open-card" data-item="group-1">
                 了解小组 <AppIcon name="i-arrow" />
               </button>
@@ -318,7 +363,7 @@ function discoverAll() {
               <span class="activity-tag">{{ a.tag }}</span>
             </div>
           </div>
-          <button class="text-link" data-route="forum" style="margin-top: 10px">
+          <button class="text-link mt-10" data-route="forum">
             进入学习论坛 <AppIcon name="i-arrow" />
           </button>
         </aside>
@@ -329,7 +374,7 @@ function discoverAll() {
     <section class="feedback-band">
       <div class="feedback-copy">
         <div class="feedback-symbol">
-          <AppIcon name="i-message" style="width: 21px; height: 21px" />
+          <AppIcon name="i-message" class="icon-lg" />
         </div>
         <div>
           <h3>让平台更贴近真实的学习需求</h3>

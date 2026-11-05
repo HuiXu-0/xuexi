@@ -95,7 +95,7 @@ function onAgentToggle(key) {
               <strong>{{ t.title }}</strong>
               <p>{{ t.desc }}</p>
               <small>{{ t.meta }}</small>
-              <div v-if="!t.resolved" class="page-actions" style="margin-top: 9px">
+              <div v-if="!t.resolved" class="page-actions mt-9">
                 <button class="mini-btn" @click="onTaskAction('review', t.id)">标记正在核实</button>
                 <button class="mini-btn" @click="onTaskAction('resolve', t.id)">处理完成</button>
               </div>

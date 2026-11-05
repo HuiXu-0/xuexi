@@ -30,10 +30,10 @@ function saveProfile() {
     <div class="page-layout-two">
       <div>
         <div class="page-panel">
-          <div style="display: flex; align-items: center; gap: 14px">
-            <div class="avatar" style="width: 54px; height: 54px; font-size: 21px; border-radius: 16px">学</div>
+          <div class="stack-row">
+            <div class="avatar avatar-lg">学</div>
             <div>
-              <h2 style="font-size: 18px; margin-bottom: 6px">学生演示账号</h2>
+              <h2 class="title-md">学生演示账号</h2>
               <div class="page-card-meta">
                 <span class="page-badge amber">未连接真实账号</span>
                 <span>专业与年级待完善</span>
@@ -41,7 +41,7 @@ function saveProfile() {
             </div>
           </div>
 
-          <div class="form-grid-two" style="margin-top: 18px">
+          <div class="form-grid-two mt-18">
             <div class="form-row">
               <label for="profileDisplayName">显示名称</label>
               <input id="profileDisplayName" v-model="displayName" />
@@ -57,7 +57,7 @@ function saveProfile() {
               id="profileBio"
               v-model="bio"
               placeholder="介绍你的学习兴趣（可选）"
-              style="min-height: 75px"
+              class="textarea-md"
             ></textarea>
           </div>
           <div class="page-actions">

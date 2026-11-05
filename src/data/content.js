@@ -157,6 +157,8 @@ export const navItems = [
   { nav: 'competitions', label: '竞赛资源', route: 'competitions' },
   { nav: 'resources', label: '资源导航', route: 'resources' },
   { nav: 'cases', label: '优秀案例', route: 'cases' },
+  /* 学习规划是高频功能，此前只能从个人中心二级进入，这里提到主导航 */
+  { nav: 'planner', label: '学习规划', route: 'planner' },
 ]
 
 export const heroSuggestions = [
@@ -182,5 +184,31 @@ export const notifications = [
   {
     title: '授权与内容提醒',
     text: '公开展示内容前，请确认可见范围及使用许可。',
+  },
+]
+
+/**
+ * 首页顶部公告条。
+ * 此前只有一条公告、一行字，占满整行却承载不了实际信息；
+ * 现在支持多条轮播，桌面端可手动切换，移动端自动轮播。
+ */
+export const siteNotices = [
+  {
+    tag: '演示公告',
+    title: '校园学习平台试运行说明（示例公告）',
+    note: '平台示例数据',
+    detail: '本页内容用于演示交互与信息结构，正式上线前会替换为学校已核实的公告。',
+  },
+  {
+    tag: '资源更新',
+    title: '本周新增 3 组嵌入式实践笔记与 2 份竞赛复盘（示例）',
+    note: '内容示例',
+    detail: '示例条目来自演示数据，用于展示通知条在多公告情况下的呈现方式。',
+  },
+  {
+    tag: '使用提醒',
+    title: '发布内容请注明来源并设置可见范围（示例）',
+    note: '规则示例',
+    detail: '内容展示不等于转载许可，转载、修改与商业使用需要分别确认。',
   },
 ]

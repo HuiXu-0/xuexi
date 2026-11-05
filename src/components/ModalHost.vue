@@ -136,8 +136,7 @@ function onFormSubmit(event) {
                 v-else-if="field.type === 'select'"
                 :id="fieldId(i)"
                 :name="field.name"
-                class="page-select"
-                style="width: 100%"
+                class="page-select select-full"
               >
                 <option v-for="opt in field.options" :key="opt[0]" :value="opt[0]">{{ opt[1] }}</option>
               </select>
