@@ -1,10 +1,58 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="color-scheme" content="light dark" />
   <title>校园学习平台 · 首页预览</title>
+
+  <!--
+    首屏设备判定（必须在 CSS 生效前同步执行）。
+    若等到 main.js 再判定，手机上会先渲染一帧桌面版布局再跳变，出现明显闪动。
+    这里用内联脚本同步打上 data-device，配合 CSS 的 [data-device="mobile"] 选择器。
+
+    平板（iPad / iPadOS 伪装成 Macintosh）按桌面处理。
+    支持 ?device=mobile / ?device=desktop 强制指定，便于在电脑浏览器上预览。
+  -->
+  <script>
+    (function () {
+      var forced = ''
+      try {
+        var v = new URLSearchParams(location.search).get('device')
+        if (v === 'mobile' || v === 'desktop') forced = v
+      } catch (e) {}
+
+      var isMobile = false
+      if (!forced) {
+        var ua = navigator.userAgent || ''
+        var touch = navigator.maxTouchPoints || 0
+        if (/iPad/i.test(ua)) {
+          isMobile = false
+        } else if (/Macintosh/i.test(ua) && touch > 1) {
+          isMobile = false
+        } else if (/Android.*Mobile/i.test(ua) || /iPhone|iPod/i.test(ua)) {
+          isMobile = true
+        } else if (/Windows Phone|IEMobile|BlackBerry|BB10|Opera Mini|webOS/i.test(ua)) {
+          isMobile = true
+        } else if (/Mobile/i.test(ua)) {
+          isMobile = true
+        }
+      } else {
+        isMobile = forced === 'mobile'
+      }
+
+      var root = document.documentElement
+      root.dataset.device = isMobile ? 'mobile' : 'desktop'
+
+      /* 视口高度实测，规避移动端 100vh 把地址栏高度也算进去的问题 */
+      function setVH() {
+        root.style.setProperty('--app-height', window.innerHeight + 'px')
+      }
+      setVH()
+      window.addEventListener('resize', setVH)
+      window.addEventListener('orientationchange', setVH)
+    })()
+  </script>
 </head>
 <body>
   <div id="app"></div>

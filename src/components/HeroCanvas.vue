@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { isMobileDevice } from '../composables/useDevice.js'
 
 /**
  * 首页 Hero 的圆点粒子网络动画。
@@ -134,6 +135,16 @@ onMounted(() => {
 
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
   if (reduced) {
+    canvas.style.display = 'none'
+    return
+  }
+
+  /*
+   * 移动端不跑粒子动画。
+   * 手机上持续 requestAnimationFrame 会抢占主线程，
+   * 拖动页面时明显掉帧，且额外耗电；窄屏上粒子效果本身也看不清。
+   */
+  if (isMobileDevice()) {
     canvas.style.display = 'none'
     return
   }

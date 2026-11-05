@@ -1,4 +1,5 @@
 import { reactive, nextTick } from 'vue'
+import { isMobileDevice } from './useDevice.js'
 
 /**
  * 弹窗状态 + FLIP 展开/收起动画。
@@ -6,6 +7,8 @@ import { reactive, nextTick } from 'vue'
  * ModalHost 组件挂载时把 DOM 引用注册进来（registerModalElements），
  * 之后 openModal / closeModal 直接驱动 Web Animations API，
  * 行为与原 HTML 原型一致：从来源卡片位置放大成弹窗，关闭时缩回。
+ *
+ * 移动端例外：改为从底部滑出的抽屉（见 open / closeModal 中的分支）。
  */
 
 const modal = reactive({
@@ -161,6 +164,24 @@ async function open(payload, ev) {
     fill: 'both',
   })
 
+  /*
+   * 移动端走底部抽屉：从下方滑入，不做 FLIP 缩放。
+   * FLIP 是「从来源卡片放大」的横屏逻辑，
+   * 在窄屏上既对不上卡片位置，也不符合拇指操作习惯。
+   */
+  if (isMobileDevice()) {
+    modalAnim = modalEl.animate(
+      [
+        { transform: 'translateY(100%)', opacity: 0.6, borderRadius: '22px 22px 0 0' },
+        { transform: 'translateY(0px)', opacity: 1, borderRadius: '22px 22px 0 0' },
+      ],
+      { duration: 340, easing: 'cubic-bezier(0.22, 1, 0.36, 1)', fill: 'both' }
+    )
+    ignoreBackdropUntil = performance.now() + 340
+    if (closeBtnEl) closeBtnEl.focus({ preventScroll: true })
+    return
+  }
+
   if (first && first.width > 1 && first.height > 1 && last.width > 1 && last.height > 1) {
     const { dx, dy, sx, sy } = flipTransform(first, last)
     modalAnim = modalEl.animate(
@@ -234,6 +255,20 @@ export function closeModal() {
     easing: 'ease-in',
     fill: 'both',
   })
+
+  /* 移动端抽屉：向下滑出，与开启动画对称 */
+  if (isMobileDevice()) {
+    modalAnim = modalEl.animate(
+      [
+        { transform: 'translateY(0px)', opacity: 1, borderRadius: '22px 22px 0 0' },
+        { transform: 'translateY(100%)', opacity: 0.4, borderRadius: '22px 22px 0 0' },
+      ],
+      { duration: 280, easing: 'cubic-bezier(0.22, 1, 0.36, 1)', fill: 'both' }
+    )
+    modalAnim.finished.then(finish).catch(finish)
+    closeTimer = setTimeout(finish, 340)
+    return
+  }
 
   if (sourceRect && modalRect.width > 1 && modalRect.height > 1) {
     const { dx, dy, sx, sy } = flipTransform(sourceRect, modalRect)

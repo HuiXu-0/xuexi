@@ -1,6 +1,7 @@
 <script setup>
 import SiteHeader from '../components/SiteHeader.vue'
 import SiteFooter from '../components/SiteFooter.vue'
+import MobileTabBar from '../components/MobileTabBar.vue'
 </script>
 
 <template>
@@ -16,4 +17,7 @@ import SiteFooter from '../components/SiteFooter.vue'
   </main>
 
   <SiteFooter />
+
+  <!-- 手机端底部标签栏（桌面端不渲染） -->
+  <MobileTabBar />
 </template>
