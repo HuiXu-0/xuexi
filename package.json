@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && node scripts/generate-404.js",
+    "build:local": "vite build && node scripts/generate-404.js",
     "preview": "vite preview"
   },
   "dependencies": {

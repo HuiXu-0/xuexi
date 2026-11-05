@@ -37,7 +37,12 @@ const routes = [
 ]
 
 const router = createRouter({
-  history: createWebHistory(),
+  /*
+   * base 取自 Vite 的 base 配置（import.meta.env.BASE_URL）。
+   * 部署到 GitHub Pages 子路径时它会是 '/xuexi/'，
+   * 开发时为 '/'。这样路由前缀始终与资源路径保持一致。
+   */
+  history: createWebHistory(import.meta.env.BASE_URL),
   routes,
   scrollBehavior(to, from, savedPosition) {
     if (savedPosition) return savedPosition
