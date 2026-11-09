@@ -2,8 +2,9 @@
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppIcon from './AppIcon.vue'
-import { navItems, notifications } from '../data/content.js'
-import { profileRoles } from '../data/pages.js'
+import { notifications } from '../data/content.js'
+import { roleMeta } from '../data/dict.js'
+import { authStore, currentNav, signOut } from '../stores/auth.js'
 import { showToast } from '../composables/useToast.js'
 import { useTheme, toggleTheme } from '../composables/useTheme.js'
 
@@ -13,24 +14,35 @@ const theme = useTheme()
 
 const navOpen = ref(false)
 const notifOpen = ref(false)
-const roleOpen = ref(false)
+const menuOpen = ref(false)
 const notifRef = ref(null)
 const notifBtnRef = ref(null)
-const roleRef = ref(null)
+const menuRef = ref(null)
 
-/** 角色入口：教师工作台 / 管理员端 / 学习规划 Agent */
-const roleItems = profileRoles
-
+/**
+ * 导航按当前角色渲染。
+ * 设计书 §4.1–4.3 定义了学生端 / 教师端 / 管理员端三套主导航；
+ * 角色在登录界面选定，这里只负责呈现，不再提供跨角色跳转入口。
+ */
+const navItems = computed(() => currentNav.value)
+const currentRole = computed(() => roleMeta(authStore.role))
+/** 头像文字：用角色自带的单字缩写，避免与文字标签连读成「学生学生」 */
+const roleInitial = computed(() => currentRole.value.initial || currentRole.value.label.charAt(0))
 const themeLabel = computed(() =>
   theme.value === 'dark' ? '切换到浅色模式' : '切换到深色模式'
 )
+
+/** 某个一级入口下的子项里，当前路由是否命中 */
+function isChildActive(item) {
+  return item.children?.some((c) => c.route === route.name)
+}
 
 watch(
   () => route.path,
   () => {
     navOpen.value = false
     notifOpen.value = false
-    roleOpen.value = false
+    menuOpen.value = false
   }
 )
 
@@ -38,8 +50,8 @@ function onOutsideClick(e) {
   if (notifOpen.value && notifRef.value && !notifRef.value.contains(e.target) && e.target !== notifBtnRef.value) {
     notifOpen.value = false
   }
-  if (roleOpen.value && roleRef.value && !roleRef.value.contains(e.target)) {
-    roleOpen.value = false
+  if (menuOpen.value && menuRef.value && !menuRef.value.contains(e.target)) {
+    menuOpen.value = false
   }
 }
 
@@ -47,7 +59,7 @@ function onKeydown(e) {
   if (e.key === 'Escape') {
     navOpen.value = false
     notifOpen.value = false
-    roleOpen.value = false
+    menuOpen.value = false
   }
 }
 
@@ -77,6 +89,58 @@ function onThemeToggle() {
   const next = toggleTheme()
   showToast(next === 'dark' ? '已切换到深色模式。' : '已切换到浅色模式。')
 }
+
+/* 二级下拉：桌面端 hover / 点击展开，移动端在汉堡菜单里平铺 */
+const openGroup = ref('')
+
+/*
+ * 关闭延时。
+ * 即使 DOM 上已经无缝，鼠标从触发器斜向快速移向菜单时，
+ * 中途仍可能短暂离开 .nav-group 触发 mouseleave。
+ * 延迟一小段时间再关，给用户足够时间把指针移到目标项上。
+ */
+let groupCloseTimer = 0
+
+function clearGroupCloseTimer() {
+  if (groupCloseTimer) {
+    clearTimeout(groupCloseTimer)
+    groupCloseTimer = 0
+  }
+}
+
+function toggleGroup(key) {
+  clearGroupCloseTimer()
+  openGroup.value = openGroup.value === key ? '' : key
+}
+
+function onGroupEnter(key) {
+  /* 桌面端 hover 展开；触屏设备靠点击 */
+  if (!window.matchMedia('(hover: hover)').matches) return
+  clearGroupCloseTimer()
+  openGroup.value = key
+}
+
+function onGroupLeave() {
+  if (!window.matchMedia('(hover: hover)').matches) return
+  clearGroupCloseTimer()
+  groupCloseTimer = setTimeout(() => {
+    openGroup.value = ''
+    groupCloseTimer = 0
+  }, 220)
+}
+
+/** 选中下拉项后立刻收起菜单并跳转 */
+function onPickChild(routeName) {
+  clearGroupCloseTimer()
+  openGroup.value = ''
+  router.push({ name: routeName })
+}
+
+function onLogout() {
+  signOut()
+  showToast('已退出当前演示身份，回到登录界面。')
+  router.push({ name: 'login' })
+}
 </script>
 
 <template>
@@ -103,30 +167,44 @@ function onThemeToggle() {
       </a>
 
       <nav class="nav" :class="{ open: navOpen }" aria-label="主导航">
-        <!--
-          手机端主导航已由底部 tab 承担，汉堡菜单里不再重复列出，
-          只保留角色入口与登录。窄屏桌面（data-device=desktop）仍显示完整导航。
-        -->
-        <button
-          v-for="item in navItems"
-          :key="item.nav"
-          :class="{ active: route.name === item.route }"
-          @click="router.push({ name: item.route })"
-        >
-          {{ item.label }}
-        </button>
-
-        <!-- 移动端顶栏空间有限，把角色入口与登录收进汉堡菜单 -->
-        <div class="nav-mobile-only">
-          <button
-            v-for="r in roleItems"
-            :key="r.route"
-            @click="router.push({ name: r.route })"
+        <template v-for="item in navItems" :key="item.key">
+          <!-- 带二级项的一级入口 -->
+          <div
+            v-if="item.children"
+            class="nav-group"
+            @mouseenter="onGroupEnter(item.key)"
+            @mouseleave="onGroupLeave"
           >
-            {{ r.title }}
+            <button
+              class="nav-group-trigger"
+              :class="{ active: isChildActive(item) }"
+              :aria-expanded="String(openGroup === item.key)"
+              @click="toggleGroup(item.key)"
+            >
+              {{ item.label }}
+              <AppIcon name="i-arrow" class="nav-caret" />
+            </button>
+            <div v-show="openGroup === item.key" class="nav-dropdown">
+              <button
+                v-for="c in item.children"
+                :key="c.label"
+                :class="{ active: route.name === c.route }"
+                @click="onPickChild(c.route)"
+              >
+                {{ c.label }}
+              </button>
+            </div>
+          </div>
+
+          <!-- 普通一级入口 -->
+          <button
+            v-else
+            :class="{ active: route.name === item.route }"
+            @click="router.push({ name: item.route })"
+          >
+            {{ item.label }}
           </button>
-          <button @click="router.push({ name: 'login' })">登录 / 注册</button>
-        </div>
+        </template>
       </nav>
 
       <div class="header-actions">
@@ -156,38 +234,7 @@ function onThemeToggle() {
           </div>
         </div>
 
-        <!-- 角色工作台入口：教师 / 管理员 / 学习规划，避免只能从个人中心二级绕进去 -->
-        <div class="action-wrap role-wrap" ref="roleRef">
-          <button
-            class="icon-btn"
-            aria-label="切换工作台"
-            title="切换工作台"
-            :aria-expanded="String(roleOpen)"
-            @click.stop="roleOpen = !roleOpen"
-          >
-            <AppIcon name="i-grid" />
-          </button>
-          <div class="notification-pop role-pop" :class="{ open: roleOpen }">
-            <h3>切换工作台</h3>
-            <button
-              v-for="r in roleItems"
-              :key="r.route"
-              class="role-pop-item"
-              type="button"
-              @click="router.push({ name: r.route })"
-            >
-              <span class="role-pop-icon"><AppIcon :name="r.icon" /></span>
-              <span class="role-pop-text">
-                <strong>{{ r.title }}</strong>
-                <small>{{ r.desc }}</small>
-              </span>
-              <AppIcon name="i-arrow" />
-            </button>
-            <p class="role-pop-note">当前为原型体验入口，不代表真实授权。</p>
-          </div>
-        </div>
-
-        <!-- 深色模式切换：此前只有欢迎页有，平台内想切主题必须先退回宣传页 -->
+        <!-- 深色模式切换 -->
         <button
           class="icon-btn"
           :aria-label="themeLabel"
@@ -197,13 +244,34 @@ function onThemeToggle() {
           <AppIcon :name="theme === 'dark' ? 'i-sun' : 'i-moon'" />
         </button>
 
-        <button class="welcome-link" type="button" @click="router.push({ name: 'login' })">
-          登录 / 注册
-        </button>
-
-        <button class="profile-btn" aria-label="个人中心" @click="router.push({ name: 'profile' })">
-          <span class="avatar">学</span><span>个人中心</span>
-        </button>
+        <!-- 当前身份：角色在登录界面选定，此处只显示，不提供跨角色切换 -->
+        <div class="action-wrap" ref="menuRef">
+          <button
+            class="profile-btn"
+            :aria-label="`当前身份：${currentRole.label}`"
+            @click.stop="menuOpen = !menuOpen"
+          >
+            <span class="avatar">{{ roleInitial }}</span>
+            <span>{{ currentRole.label }}</span>
+          </button>
+          <div class="notification-pop identity-pop" :class="{ open: menuOpen }">
+            <h3>当前身份</h3>
+            <div class="identity-card">
+              <span class="identity-icon"><AppIcon :name="currentRole.icon" /></span>
+              <div>
+                <strong>{{ currentRole.label }}</strong>
+                <small>{{ authStore.displayName }}</small>
+                <span class="identity-badge">{{ currentRole.badge }}</span>
+              </div>
+            </div>
+            <p class="identity-note">
+              身份在登录界面选定，导航与操作权限随之变化。如需切换身份，请退出后重新登录。
+            </p>
+            <button class="text-link" @click="onLogout">
+              退出登录 <AppIcon name="i-arrow" />
+            </button>
+          </div>
+        </div>
 
         <button class="icon-btn mobile-menu" aria-label="打开导航" @click="navOpen = !navOpen">
           <AppIcon name="i-menu" />

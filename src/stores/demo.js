@@ -23,6 +23,10 @@ export const demoStore = reactive({
 
   /** 管理工单状态：{ [id]: { label, class } } */
   adminTaskStatus: {},
+  /** 案例授权流程：{ [caseId]: { state, sections, note, updatedAt } } */
+  caseAuthorizations: {},
+  /** 教师推荐申请记录 */
+  recommendRequests: [],
   /** 教师工作台待确认推荐数 */
   teacherPendingCount: 1,
   /** 管理员工单计数 */

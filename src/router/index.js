@@ -1,6 +1,8 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import PlatformLayout from '../layouts/PlatformLayout.vue'
 import WelcomeLayout from '../layouts/WelcomeLayout.vue'
+import { restoreAuth, canAccess, denyReason } from '../stores/auth.js'
+import { showToast } from '../composables/useToast.js'
 
 const routes = [
   /* 宣传页 / 登录页：自带外壳，不套平台顶栏页脚 */
@@ -49,6 +51,25 @@ const router = createRouter({
     if (to.hash) return { el: to.hash, behavior: 'smooth' }
     return { top: 0, behavior: 'smooth' }
   },
+})
+
+/*
+ * 权限守卫。
+ * 设计书 §4 定义了学生端 / 教师端 / 管理员端三套导航与权限，
+ * 教师端和管理员端不应被其他角色直接访问。
+ * 需要先恢复登录态才能判断角色。
+ */
+restoreAuth()
+
+router.beforeEach((to) => {
+  /* 登录页与宣传页始终可访问 */
+  if (to.name === 'login' || to.name === 'welcome') return true
+
+  if (!canAccess(to.name)) {
+    showToast(denyReason(to.name))
+    return { name: 'home' }
+  }
+  return true
 })
 
 export default router
