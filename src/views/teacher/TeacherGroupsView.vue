@@ -181,19 +181,23 @@ function onAssignCoManager() {
       </div>
     </div>
 
-    <div class="page-layout-two">
-      <!-- 小组列表 -->
-      <div>
-        <div class="page-section-head">
-          <div>
-            <h2>我创建的小组</h2>
-            <p>共 {{ groups.length }} 个，含已归档。</p>
-          </div>
-          <label class="mini-check">
-            <input v-model="onlyActive" type="checkbox" /> 只看进行中
-          </label>
+    <!--
+      小组列表与详情采用「上下」而非「左右」结构。
+      左侧只有小组卡片（高度有限），右侧详情 + 加入申请往往更高，
+      放同一行会让左栏下方出现大片空白，看起来像内容塌陷。
+    -->
+    <div class="page-section">
+      <div class="page-section-head">
+        <div>
+          <h2>我创建的小组</h2>
+          <p>共 {{ groups.length }} 个，含已归档。点击卡片切换下方管理对象。</p>
         </div>
+        <label class="mini-check">
+          <input v-model="onlyActive" type="checkbox" /> 只看进行中
+        </label>
+      </div>
 
+      <div class="group-stack">
         <div
           v-for="g in visibleGroups"
           :key="g.id"
@@ -217,7 +221,7 @@ function onAssignCoManager() {
             <span class="admin-item-chip">更新于 {{ g.updatedAt }}</span>
           </div>
 
-          <div class="page-actions mt-9">
+          <div class="page-actions mt-12">
             <button class="mini-btn" @click="activeId = g.id">进入管理</button>
             <button class="mini-btn" @click="onEditGroup(g)">编辑信息</button>
             <button class="mini-btn" @click="onArchive(g)">
@@ -226,9 +230,11 @@ function onAssignCoManager() {
           </div>
         </div>
       </div>
+    </div>
 
-      <!-- 小组详情 -->
-      <div v-if="active">
+    <!-- 小组详情 -->
+    <template v-if="active">
+      <div class="page-section">
         <div class="page-panel">
           <div class="page-section-head">
             <div>
@@ -245,7 +251,7 @@ function onAssignCoManager() {
             {{ active.goal }}
           </div>
 
-          <div class="tag-row mt-9">
+          <div class="tag-row mt-12">
             <span v-for="t in active.tags" :key="t" class="tag">{{ t }}</span>
           </div>
 
@@ -255,8 +261,10 @@ function onAssignCoManager() {
             <span class="admin-item-chip">{{ active.channels.filter((c) => c.enabled).length }} 个频道</span>
           </div>
         </div>
+      </div>
 
-        <!-- 成员加入申请 -->
+      <!-- 成员加入申请 -->
+      <div class="page-section">
         <div class="page-panel">
           <div class="page-section-head">
             <div>
@@ -281,35 +289,42 @@ function onAssignCoManager() {
           </div>
           <div v-if="!requests.length" class="page-empty">该小组当前没有待处理的加入申请。</div>
         </div>
+      </div>
+    </template>
 
-        <!-- 频道结构（§5.2.3） -->
-        <div class="page-panel">
-          <div class="page-section-head">
-            <div>
-              <h2>频道结构</h2>
-              <p>按小组需要选择，不要求全部设置。</p>
-            </div>
+    <!-- 频道结构（§5.2.3）：6 类频道在窄栏里 2 列排会挤成一团，单独占一整行放 3 列 -->
+    <div class="page-section">
+      <div class="page-panel">
+        <div class="page-section-head">
+          <div>
+            <h2>频道结构</h2>
+            <p>
+              按小组需要选择，不要求全部设置。当前小组：{{ active?.title || '未选择' }}
+            </p>
           </div>
-          <div class="channel-grid">
-            <button
-              v-for="c in channels"
-              :key="c.key"
-              class="channel-toggle"
-              :class="{ on: c.enabled }"
-              @click="onToggleChannel(c.key)"
-            >
-              <span class="icon-wrap"><AppIcon :name="c.icon" /></span>
-              <span>
-                <strong>{{ c.label }}</strong>
-                <small>{{ c.desc }}</small>
+          <span class="page-badge green">
+            已启用 {{ channels.filter((c) => c.enabled).length }} / {{ channels.length }}
+          </span>
+        </div>
+        <div class="channel-grid">
+          <button
+            v-for="c in channels"
+            :key="c.key"
+            class="channel-toggle"
+            :class="{ on: c.enabled }"
+            @click="onToggleChannel(c.key)"
+          >
+            <span class="icon-wrap"><AppIcon :name="c.icon" /></span>
+            <span>
+              <strong>{{ c.label }}</strong>
+              <small>{{ c.desc }}</small>
+            </span>
+            <span class="channel-flag">
+              <span class="page-badge" :class="c.enabled ? 'green' : 'gray'">
+                {{ c.enabled ? '已启用' : '未启用' }}
               </span>
-              <span class="channel-flag">
-                <span class="page-badge" :class="c.enabled ? 'green' : 'gray'">
-                  {{ c.enabled ? '已启用' : '未启用' }}
-                </span>
-              </span>
-            </button>
-          </div>
+            </span>
+          </button>
         </div>
       </div>
     </div>

@@ -330,11 +330,14 @@ function replyQuestion(q) {
           <div class="page-list-content">
             <strong>{{ g.title }}</strong>
             <p>{{ g.desc }}</p>
-            <small>
-              成员 {{ g.members }} 人 · 频道 {{ g.channels.filter((c) => c.enabled).length }} 个
-              <template v-if="g.pending"> · 待处理加入申请 {{ g.pending }}</template>
-              · 更新于 {{ g.updatedAt }}
-            </small>
+            <div class="admin-item-meta">
+              <span class="admin-item-chip">成员 {{ g.members }} 人</span>
+              <span class="admin-item-chip">频道 {{ g.channels.filter((c) => c.enabled).length }} 个</span>
+              <span v-if="g.pending" class="admin-item-chip amber">
+                待处理加入申请 {{ g.pending }}
+              </span>
+              <span class="admin-item-chip">更新于 {{ g.updatedAt }}</span>
+            </div>
           </div>
           <span class="page-badge" :class="g.status === 'active' ? 'green' : 'gray'">
             {{ g.status === 'active' ? '进行中' : '已归档' }}
