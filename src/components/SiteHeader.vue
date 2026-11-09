@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppIcon from './AppIcon.vue'
 import { notifications } from '../data/content.js'
@@ -122,31 +122,26 @@ function onThemeToggle() {
 const openGroup = ref('')
 
 /*
- * 下拉展开时给 html 加一个标记类，并写入菜单实际高度。
+ * 下拉展开时给 html 加一个标记类。
  *
- * 浮层菜单必然会盖住下方的页面标题，看起来像「排版错乱」。
- * 让页面主内容按菜单高度整体下沉，把标题让出来 ——
- * 菜单仍然浮在内容之上，但不会挡住任何文字。
- * 高度必须实测：教师端 4 项、学生端 5 项，写死的值会对不上。
+ * 浮层菜单盖住下方内容时，视觉上容易被误看成「页面排版错乱」。
+ * 现在用一层半透明遮罩覆盖整个页面内容，菜单浮在遮罩之上：
+ * 内容变暗但位置不动，既没有错位感，也不会因为下沉/上浮而跳动。
+ * 遮罩本身由 .nav-scrim 负责，这里只负责加标记类与收起逻辑。
  */
 watch(
   () => openGroup.value,
-  async (v) => {
+  (v) => {
     if (import.meta.env.SSR) return
-    const root = document.documentElement
-    if (!v) {
-      root.classList.remove('nav-dropdown-open')
-      return
-    }
-    root.classList.add('nav-dropdown-open')
-    await nextTick()
-    const dd = root.querySelector('.nav-dropdown')
-    if (dd) {
-      const h = Math.round(dd.getBoundingClientRect().height)
-      if (h > 0) root.style.setProperty('--nav-drop-h', `${h}px`)
-    }
+    document.documentElement.classList.toggle('nav-dropdown-open', !!v)
   }
 )
+
+/** 点遮罩收起菜单 */
+function closeGroup() {
+  clearGroupCloseTimer()
+  openGroup.value = ''
+}
 
 /*
  * 关闭延时。
@@ -199,6 +194,15 @@ function onLogout() {
 </script>
 
 <template>
+  <!--
+    二级下拉展开时的半透明遮罩。
+    用 Teleport 挂到 body，才能脱离 header 的堆叠上下文，
+    从而「压暗页面内容、但顶栏与菜单保持清晰」。
+  -->
+  <Teleport to="body">
+    <div v-if="openGroup" class="nav-scrim" @click="closeGroup"></div>
+  </Teleport>
+
   <div class="topline">
     <div class="container topline-inner">
       <div class="topline-left">

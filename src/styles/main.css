@@ -137,6 +137,26 @@
   .nav-dropdown button { width: 100%; display: block; padding: 9px 11px; border-radius: 9px; background: transparent; color: var(--text-soft); font-size: 12px; text-align: left; }
   .nav-dropdown button:hover { background: var(--surface-tint); color: var(--green); }
   .nav-dropdown button.active { color: var(--green); background: var(--surface-tint); font-weight: 700; }
+  /*
+   * 二级下拉展开时的半透明遮罩。
+   *
+   * 之前用「主内容整体下沉」来给标题让位，但那样收起时内容会跳回去，
+   * 反而更像错位。改成更直接的做法：铺一层半透明遮罩把页面内容压暗，
+   * 菜单与顶栏保持清晰 —— 层次关系一目了然，内容位置完全不动。
+   *
+   * 层级：遮罩 z=25（在 header 的 30 之下）→ 顶栏与菜单不被压暗；
+   * 页面内容 z=auto → 被遮罩覆盖。菜单自身 z=40，在遮罩之上。
+   */
+  .nav-scrim {
+    position: fixed;
+    inset: 0;
+    z-index: 25;
+    background: color-mix(in srgb, var(--text) 22%, transparent);
+    animation: scrimIn .18s ease-out;
+  }
+  @keyframes scrimIn { from { opacity: 0; } to { opacity: 1; } }
+  /* 移动端下拉是平铺在汉堡菜单里的，不需要遮罩 */
+  @media (max-width: 780px) { .nav-scrim { display: none; } }
   /* 身份浮层 */
   .identity-pop { width: 288px; }
   .identity-card { display: flex; align-items: flex-start; gap: 10px; padding: 11px; border-radius: 11px; background: var(--surface-tint); }
@@ -157,17 +177,7 @@
   .mobile-menu { display: none; }
   /* 仅移动端显示的菜单分组（角色入口 / 登录） */
   .nav-mobile-only { display: none; }
-  .main { padding: 23px 0 70px; transition: padding-top .2s ease; }
-  /*
-   * 二级下拉展开时，页面主内容整体下沉，让出标题的位置。
-   * 浮层菜单盖住标题虽然功能上没问题，视觉上却像排版错乱。
-   * 下沉让菜单明确浮在内容之上，又不遮挡任何文字。
-   * --nav-drop-h 由 SiteHeader 实测菜单高度后写入（教师端 4 项、学生端 5 项，高度不同）。
-   * 移动端下拉是平铺在汉堡菜单里的，不存在遮挡，不需要下沉。
-   */
-  @media (min-width: 781px) {
-    html.nav-dropdown-open .main { padding-top: calc(23px + var(--nav-drop-h, 113px)); }
-  }
+  .main { padding: 23px 0 70px; }
   .notice-strip { display: flex; align-items: center; gap: 14px; border: 1px solid var(--line); background: var(--surface); border-radius: 14px; padding: 12px 16px; margin-bottom: 18px; min-height: 52px; }
   .notice-label { display: inline-flex; gap: 7px; align-items: center; color: var(--green); font-weight: 800; font-size: 12px; white-space: nowrap; padding-right: 14px; border-right: 1px solid var(--line); }
   .notice-text { flex: 1; min-width: 0; display: flex; align-items: center; gap: 9px; font-size: 13px; color: var(--text-soft); overflow: hidden; }
