@@ -610,6 +610,85 @@
   .punish-item strong { display: block; font-size: 12px; margin-bottom: 4px; }
   .punish-item small { display: block; font-size: 10px; line-height: 1.65; color: var(--text-faint); }
   @media (max-width: 780px) { .punish-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+  /* ===== 教师端（设计书 §6） ===== */
+  /* 待办聚合：设计书要求「显示截止时间或优先级，并提供明确操作入口」 */
+  .todo-list { display: grid; gap: 2px; }
+  .todo-item { display: flex; align-items: flex-start; gap: 13px; padding: 13px 0; border-bottom: 1px solid var(--line); }
+  .todo-item:last-child { border-bottom: 0; }
+  .todo-item .mini-btn { flex: 0 0 auto; margin-left: auto; align-self: center; }
+  /* 内容状态统计网格（§6.1.2） */
+  .state-stat-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+  .state-stat { padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+  .state-stat strong { display: block; font-size: 20px; letter-spacing: -.04em; color: var(--green); }
+  .state-stat span { display: block; font-size: 11px; font-weight: 750; margin-top: 4px; }
+  .state-stat small { display: block; font-size: 9px; line-height: 1.6; color: var(--text-faint); margin-top: 3px; }
+  /* 小组卡片（§6.2） */
+  .group-card { padding: 15px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+  .group-card-head { display: flex; align-items: flex-start; gap: 11px; margin-bottom: 9px; width: 100%; border: 0; background: transparent; text-align: left; padding: 0; color: inherit; }
+  .group-card-head strong { display: block; font-size: 13px; line-height: 1.5; }
+  .group-card-head p { margin: 4px 0 0; color: var(--text-soft); font-size: 11px; line-height: 1.7; }
+  .group-goal { padding: 10px 12px; border-radius: 11px; background: var(--surface-tint); font-size: 11px; line-height: 1.75; color: var(--text-soft); }
+  .group-goal strong { display: block; color: var(--text); font-size: 10px; margin-bottom: 3px; }
+  /* 频道结构开关（§5.2.3） */
+  .channel-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
+  .channel-toggle { display: flex; align-items: flex-start; gap: 9px; padding: 10px 11px; border: 1px solid var(--line); border-radius: 11px; background: var(--surface); text-align: left; transition: border-color .18s, background .18s; }
+  .channel-toggle:hover { border-color: color-mix(in srgb, var(--green) 40%, var(--line)); }
+  .channel-toggle.on { border-color: color-mix(in srgb, var(--green) 45%, var(--line)); background: var(--surface-tint); }
+  .channel-toggle .icon-wrap { width: 28px; height: 28px; flex: 0 0 auto; display: grid; place-items: center; border-radius: 9px; background: var(--surface-soft); color: var(--text-faint); }
+  .channel-toggle.on .icon-wrap { color: var(--green); }
+  .channel-toggle .icon { width: 14px; height: 14px; }
+  .channel-toggle strong { display: block; font-size: 11px; margin-bottom: 2px; }
+  .channel-toggle small { display: block; font-size: 9px; line-height: 1.6; color: var(--text-faint); }
+  .channel-toggle .channel-flag { margin-left: auto; align-self: center; flex: 0 0 auto; }
+  /* 小组规则条目 */
+  .rule-list { margin: 0; padding-left: 17px; color: var(--text-soft); font-size: 11px; line-height: 1.95; }
+  /* 推荐状态流转条（§6.3.3） */
+  .flow-track { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 12px 0 4px; }
+  .flow-node { display: inline-flex; align-items: center; gap: 5px; padding: 5px 9px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--text-faint); font-size: 10px; white-space: nowrap; }
+  .flow-node.done { border-color: color-mix(in srgb, var(--green) 35%, var(--line)); color: var(--green); background: var(--surface-tint); }
+  .flow-node.current { border-color: var(--green); background: var(--surface-tint); color: var(--green); font-weight: 750; }
+  .flow-arrow { color: var(--text-faint); font-size: 10px; }
+  /* 审核任务卡（§6.4） */
+  .review-card { padding: 15px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+  .review-card + .review-card { margin-top: 10px; }
+  .review-head { display: flex; align-items: flex-start; gap: 11px; }
+  .review-head strong { display: block; font-size: 13px; line-height: 1.5; }
+  .review-head p { margin: 4px 0 0; font-size: 11px; line-height: 1.7; color: var(--text-soft); }
+  .review-snippet { margin-top: 10px; padding: 10px 12px; border-left: 2px solid var(--line); border-radius: 0 9px 9px 0; background: var(--surface-soft); font-size: 11px; line-height: 1.75; color: var(--text-soft); }
+  .review-agent-note { display: flex; align-items: flex-start; gap: 8px; margin-top: 10px; padding: 10px 11px; border-radius: 10px; background: var(--blue-soft); font-size: 10px; line-height: 1.7; color: var(--text-soft); }
+  .review-agent-note .icon { width: 14px; height: 14px; flex: 0 0 auto; margin-top: 1px; }
+  .review-actions { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 12px; }
+  /* 审核处置面板：卡内联展开。不用弹窗 —— ModalHost 是全局常驻的，
+     自造同名 .modal 会与之抢选择器，状态也对不上。 */
+  .review-action-panel { margin-top: 11px; padding: 13px; border: 1px solid color-mix(in srgb, var(--green) 25%, var(--line)); border-radius: 12px; background: var(--surface); }
+  .review-history { margin-top: 11px; padding-top: 10px; border-top: 1px dashed var(--line); }
+  .review-history-row { display: flex; gap: 10px; padding: 4px 0; font-size: 10px; color: var(--text-faint); }
+  .review-history-row strong { color: var(--text-soft); font-weight: 700; flex: 0 0 auto; }
+  /* 校级通知卡（§6.5） */
+  .notice-card { padding: 15px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+  .notice-card + .notice-card { margin-top: 10px; }
+  .notice-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .notice-change-log { margin-top: 10px; padding-top: 9px; border-top: 1px dashed var(--line); font-size: 10px; color: var(--text-faint); line-height: 1.75; }
+  /* §6.5 预览桌面端与移动端展示效果 */
+  .notice-preview { margin-top: 11px; padding-top: 11px; border-top: 1px dashed var(--line); }
+  .notice-preview-frame { margin-top: 9px; padding: 12px; border: 1px solid var(--line); border-radius: 11px; background: var(--page); }
+  .notice-preview-frame.mobile { max-width: 320px; }
+  .notice-preview-label { display: block; font-size: 9px; color: var(--text-faint); margin-bottom: 8px; }
+  .notice-preview-body { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; }
+  .notice-preview-body strong { font-size: 12px; }
+  .notice-preview-meta { flex-basis: 100%; font-size: 9px; color: var(--text-faint); }
+  .mini-btn.is-active { border-color: var(--green); background: var(--surface-tint); color: var(--green); }
+  /* 小组卡片选中态 */
+  .group-card.is-active { border-color: color-mix(in srgb, var(--green) 45%, var(--line)); }
+  .mini-check { display: inline-flex; align-items: center; gap: 6px; font-size: 10px; color: var(--text-faint); }
+  .mini-check input { accent-color: var(--green); }
+  @media (max-width: 780px) {
+    .state-stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .channel-grid { grid-template-columns: minmax(0, 1fr); }
+    .todo-item { flex-wrap: wrap; }
+    .todo-item .mini-btn { margin-left: 0; }
+  }
   /* 管理员端 9 模块切换 */
   .admin-modules { display: flex; flex-wrap: wrap; gap: 7px; }
   .admin-module-btn { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--text-soft); font-size: 11px; font-weight: 700; transition: border-color .18s, color .18s, background .18s; }

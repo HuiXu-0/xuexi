@@ -24,6 +24,8 @@ const roleOptions = userRoles
  * 而不是可误触的虚假操作按钮。
  */
 const contentAdminGranted = ref(false)
+/** 是否申请「内容审核职责」（§6.4，与校级内容管理授权相互独立） */
+const reviewGranted = ref(false)
 
 const identifier = ref('')
 const displayName = ref('')
@@ -208,6 +210,7 @@ function onSubmit() {
     role: selectedRole.value,
     displayName: name,
     contentAdmin: contentAdminGranted.value,
+    canReview: reviewGranted.value,
   })
 
   setNotice(
@@ -235,6 +238,7 @@ function enterPlatform() {
     role: selectedRole.value,
     displayName: displayName.value.trim() || identifier.value.trim(),
     contentAdmin: contentAdminGranted.value,
+    canReview: reviewGranted.value,
   })
   router.push({ name: 'home' })
 }
@@ -357,14 +361,27 @@ onMounted(() => {
             </button>
           </div>
 
-          <!-- 教师可额外申请校级内容管理授权（设计书 §4.2 独立授权） -->
-          <label v-if="selectedRole === 'teacher'" class="auth-extra-grant">
-            <input v-model="contentAdminGranted" type="checkbox" />
-            <span>
-              <strong>同时申请「校级内容管理」授权</strong>
-              <small>普通教师默认没有该权限；勾选后可在教师端维护校级通知。</small>
-            </span>
-          </label>
+          <!--
+            教师可额外申请两项**相互独立**的授权。
+            设计书 §3.3 权限矩阵里「教师」这一档内部还要再分：
+            有没有内容审核职责、有没有校级内容管理权 —— 两项互不包含。
+          -->
+          <div v-if="selectedRole === 'teacher'" class="auth-grant-list">
+            <label class="auth-extra-grant">
+              <input v-model="contentAdminGranted" type="checkbox" />
+              <span>
+                <strong>同时申请「校级内容管理」授权</strong>
+                <small>普通教师默认没有该权限；勾选后可在教师端维护校级通知。</small>
+              </span>
+            </label>
+            <label class="auth-extra-grant">
+              <input v-model="reviewGranted" type="checkbox" />
+              <span>
+                <strong>同时申请「内容审核职责」</strong>
+                <small>用于处理被分配的审核任务；未获授权时不会显示审核队列。</small>
+              </span>
+            </label>
+          </div>
         </div>
 
         <!--

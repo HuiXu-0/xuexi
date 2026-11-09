@@ -10,12 +10,21 @@ import { showToast } from '../composables/useToast.js'
 const route = useRoute()
 const router = useRouter()
 
-const displayName = ref('学生演示账号')
+/**
+ * 显示名称跟随登录态。
+ * 此前这里是写死的「学生演示账号」，教师登录后个人中心仍显示学生名，
+ * 与右上角的当前身份矛盾（设计书 §3.1 身份要前后一致）。
+ * 未登录时回落到当前角色的默认演示名。
+ */
+const displayName = ref(authStore.displayName || `${roleMeta(authStore.role).label}演示账号`)
 const direction = ref('')
 const bio = ref('')
 
 const currentRole = computed(() => roleMeta(authStore.role))
 const currentRoute = computed(() => route.name)
+
+/** 标题用当前身份的显示名 */
+const profileTitle = computed(() => authStore.displayName || `${currentRole.value.label}演示账号`)
 
 /**
  * 当前身份可用的工作台。
@@ -70,9 +79,9 @@ function onLogout() {
       <div>
         <div class="page-panel">
           <div class="stack-row">
-            <div class="avatar avatar-lg">学</div>
+            <div class="avatar avatar-lg">{{ currentRole.initial }}</div>
             <div>
-              <h2 class="title-md">学生演示账号</h2>
+              <h2 class="title-md">{{ profileTitle }}</h2>
               <div class="page-card-meta">
                 <span class="page-badge amber">未连接真实账号</span>
                 <span>专业与年级待完善</span>

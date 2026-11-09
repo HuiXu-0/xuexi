@@ -30,7 +30,27 @@ const routes = [
       { path: 'cases', name: 'cases', component: () => import('../views/CasesView.vue') },
       { path: 'profile', name: 'profile', component: () => import('../views/ProfileView.vue') },
       { path: 'planner', name: 'planner', component: () => import('../views/PlannerView.vue') },
-      { path: 'teacher', name: 'teacher', component: () => import('../views/TeacherView.vue') },
+      { path: 'teacher', name: 'teacher', component: () => import('../views/teacher/TeacherView.vue') },
+      {
+        path: 'teacher/groups',
+        name: 'teacherGroups',
+        component: () => import('../views/teacher/TeacherGroupsView.vue'),
+      },
+      {
+        path: 'teacher/reviews',
+        name: 'teacherReviews',
+        component: () => import('../views/teacher/TeacherReviewsView.vue'),
+      },
+      {
+        path: 'teacher/tasks',
+        name: 'teacherTasks',
+        component: () => import('../views/teacher/TeacherTasksView.vue'),
+      },
+      {
+        path: 'teacher/content',
+        name: 'teacherContent',
+        component: () => import('../views/teacher/TeacherContentView.vue'),
+      },
       { path: 'admin', name: 'admin', component: () => import('../views/AdminView.vue') },
     ],
   },

@@ -24,7 +24,35 @@ const menuRef = ref(null)
  * 设计书 §4.1–4.3 定义了学生端 / 教师端 / 管理员端三套主导航；
  * 角色在登录界面选定，这里只负责呈现，不再提供跨角色跳转入口。
  */
-const navItems = computed(() => currentNav.value)
+/**
+ * 导航项按当前授权过滤。
+ *
+ * `requires` 声明该入口需要哪项授权：
+ *   contentAdmin —— 校级内容管理（§4.2 仅授权角色可见）
+ *   canReview    —— 内容审核职责（§6.4 审核队列只在授权范围内出现）
+ *
+ * 不满足条件时**整个入口不渲染**，而不是渲染成灰的再报错。
+ */
+function allowed(item) {
+  if (item.requires === 'contentAdmin') {
+    return authStore.role === 'admin' || authStore.contentAdmin
+  }
+  if (item.requires === 'canReview') {
+    return authStore.role === 'admin' || authStore.canReview
+  }
+  return true
+}
+
+const navItems = computed(() =>
+  currentNav.value
+    .filter((item) => allowed(item))
+    .map((item) =>
+      item.children
+        ? { ...item, children: item.children.filter((c) => allowed(c)) }
+        : item
+    )
+    .filter((item) => !item.children || item.children.length > 0)
+)
 const currentRole = computed(() => roleMeta(authStore.role))
 /** 头像文字：用角色自带的单字缩写，避免与文字标签连读成「学生学生」 */
 const roleInitial = computed(() => currentRole.value.initial || currentRole.value.label.charAt(0))

@@ -156,10 +156,19 @@ export const navByRole = {
       label: '学习平台管理',
       icon: 'i-users',
       children: [
-        { route: 'teacher', label: '我管理的小组' },
-        { route: 'teacher', label: '学生案例推荐' },
-        { route: 'teacher', label: '被分配的审核事项' },
+        { route: 'teacherGroups', label: '我管理的小组' },
+        { route: 'teacherReviews', label: '学生案例推荐' },
+        { route: 'teacherReviews', label: '授权确认状态' },
+        { route: 'teacherTasks', label: '被分配的审核事项', requires: 'canReview' },
       ],
+    },
+    {
+      key: 'teacherContent',
+      label: '首页内容管理',
+      route: 'teacherContent',
+      icon: 'i-bellring',
+      /* 仅获授权的学校内容管理员可见（§4.2） */
+      requires: 'contentAdmin',
     },
     { key: 'notes', label: '学习笔记', route: 'notes', icon: 'i-file' },
     { key: 'profile', label: '个人中心', route: 'profile', icon: 'i-file' },
@@ -197,4 +206,128 @@ export const notificationTypes = {
   report: { label: '举报/申诉处理结果', icon: 'i-bellring' },
   feedback: { label: 'Bug 与建议状态变化', icon: 'i-send' },
   planner: { label: '学习规划阶段提醒', icon: 'i-target' },
+}
+
+/* ---------- §6.3.3 案例推荐状态流转 ---------- */
+/**
+ * 设计书原文建议的 8 种状态。教师只能推进到自己有权限的环节，
+ * 「已发布」必须等学生授权范围确认后，由平台审核环节完成。
+ */
+export const recommendFlow = {
+  draft: { label: '草稿', tone: 'gray', desc: '推荐申请尚未发出，只有教师自己可见。', next: ['pending'] },
+  pending: { label: '等待学生确认', tone: 'amber', desc: '已发送推荐邀请，等待作者确认拟展示范围。', next: ['modified', 'accepted', 'rejected'] },
+  modified: { label: '学生要求修改', tone: 'amber', desc: '作者对拟展示字段或范围提出了调整要求。', next: ['pending'] },
+  accepted: { label: '已同意', tone: 'green', desc: '学生已确认展示范围，可进入平台审核。', next: ['platformReview'] },
+  rejected: { label: '已拒绝', tone: 'red', desc: '学生不同意展示，可保留记录但不发布。', next: [] },
+  platformReview: { label: '待平台审核', tone: 'blue', desc: '授权已确认，等待平台核验后正式发布。', next: ['published', 'withdrawn'] },
+  published: { label: '已发布', tone: 'green', desc: '推荐已发布，展示范围不超过学生授权的上限。', next: ['withdrawn'] },
+  withdrawn: { label: '已撤回', tone: 'gray', desc: '推荐已撤回，学生撤回授权时需同步处理。', next: [] },
+}
+
+export const recommendFlowOrder = [
+  'draft',
+  'pending',
+  'modified',
+  'accepted',
+  'rejected',
+  'platformReview',
+  'published',
+  'withdrawn',
+]
+
+export function recommendMeta(key) {
+  return recommendFlow[key] || recommendFlow.draft
+}
+
+/* ---------- §6.4 教师审核任务 ---------- */
+/**
+ * 审核动作。设计书 §6.4 原文列出 5 个可选操作。
+ * 注意：这里只有「内容」处置，没有账号封禁 —— 审核与处罚必须分离（§8.3.6）。
+ */
+export const reviewActions = {
+  approve: {
+    label: '通过',
+    tone: 'green',
+    icon: 'i-check',
+    desc: '内容符合规则，予以放行。高价值内容仍可接受后续举报。',
+    needsReason: false,
+  },
+  return: {
+    label: '退回修改',
+    tone: 'amber',
+    icon: 'i-arrow',
+    desc: '说明需要处理的问题并保留已有内容，允许修改后重新提交。',
+    needsReason: true,
+    reasonHint: '请说明需要作者修改的具体问题。',
+  },
+  defer: {
+    label: '暂缓并转交',
+    tone: 'blue',
+    icon: 'i-send',
+    desc: '超出本人判断范围或需更高权限时暂缓，转交指定处理人。',
+    needsReason: true,
+    reasonHint: '请说明转交原因与建议的处理人。',
+  },
+  hide: {
+    label: '隐藏待核实',
+    tone: 'amber',
+    icon: 'i-eye',
+    desc: '内容可能涉及争议，暂时下线等待核实。记录原因、执行主体与时间。',
+    needsReason: true,
+    reasonHint: '请说明进入核实状态的原因。',
+  },
+  reject: {
+    label: '拒绝并说明理由',
+    tone: 'red',
+    icon: 'i-x',
+    desc: '命中明确且可解释的规则。必须说明理由，并允许在规则许可时申诉。',
+    needsReason: true,
+    reasonHint: '拒绝必须给出可理解的理由，不只提示「审核失败」。',
+  },
+}
+
+export const reviewActionOrder = ['approve', 'return', 'defer', 'hide', 'reject']
+
+/** 审核任务的处理状态 */
+export const reviewTaskStates = {
+  pending: { label: '待处理', tone: 'amber', desc: '已分配，等待人工判断。' },
+  agentReview: { label: 'Agent 审核中', tone: 'blue', desc: '内容审核 Agent 正在初筛，结果仅供参考。' },
+  needHuman: { label: '待人工复核', tone: 'amber', desc: 'Agent 置信不足或存在争议，必须人工判断。' },
+  done: { label: '已处理', tone: 'green', desc: '已完成处置并记录了原因与处理人。' },
+  deferred: { label: '已转交', tone: 'blue', desc: '已暂缓并转交其他处理人。' },
+}
+
+/* ---------- §8.3.3 风险类别 ---------- */
+/**
+ * 风险类别。设计书 §8.3.3 列出 7 类。
+ * 重要约束：平台规则中明示哪些属于违禁内容，Agent 不能自行创造新的禁止范围。
+ */
+export const riskCategories = {
+  abuse: { label: '辱骂与人身攻击', desc: '辱骂、人身攻击、恶意骚扰。' },
+  spam: { label: '垃圾广告与刷屏', desc: '垃圾广告、刷屏和明显无关推广。' },
+  malicious: { label: '恶意链接与诈骗', desc: '恶意链接、诈骗或明显有害的诱导内容。' },
+  privacy: { label: '未授权公开敏感信息', desc: '未经授权公开个人敏感信息。' },
+  infringement: { label: '疑似侵犯权益', desc: '疑似侵犯他人内容权益或冒用他人成果。' },
+  violation: { label: '违反社区规则', desc: '明确违反平台社区规则的内容。' },
+  judgment: { label: '需人工判断', desc: '其他需要人工判断的风险，无法只靠规则命中。' },
+}
+
+/* ---------- §5.2.3 小组频道类型 ---------- */
+export const channelTypes = {
+  notice: { label: '公告/通知', icon: 'i-bellring', desc: '发布小组规则、活动安排和重要通知，支持置顶。' },
+  discussion: { label: '讨论', icon: 'i-message', desc: '围绕主题交流想法和经验。' },
+  question: { label: '问题求助', icon: 'i-help', desc: '发布问题、补充环境与复现信息、回答并标记解决状态。' },
+  resource: { label: '资源分享', icon: 'i-lightbulb', desc: '分享笔记、外部链接、教程或工具。' },
+  task: { label: '活动/任务', icon: 'i-trophy', desc: '组织学习任务、线下活动或阶段性目标。' },
+  feedback: { label: '反馈建议', icon: 'i-send', desc: '对小组学习安排提出建议。' },
+}
+
+export const channelTypeOrder = ['notice', 'discussion', 'question', 'resource', 'task', 'feedback']
+
+/* ---------- §6.2 小组加入方式 ---------- */
+export const joinModes = {
+  open: { label: '自由加入', desc: '符合范围的用户可直接加入。' },
+  approve: { label: '需审批', desc: '提交申请后由小组管理者审批。' },
+  course: { label: '按课程开放', desc: '仅面向指定课程或教师课表内的学生。' },
+  invite: { label: '仅邀请', desc: '只接受管理者或共同管理员的邀请。' },
 }
