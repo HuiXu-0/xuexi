@@ -134,9 +134,24 @@ function onYearChange() {
           <div class="page-list-content">
             <strong>{{ c.title }}</strong>
             <p>{{ c.desc }}</p>
-            <small>{{ c.meta }}</small>
+            <!-- 设计书 §5.4.3：来源、日期、状态与最后核实时间 -->
+            <div class="comp-facts">
+              <span class="comp-fact"><AppIcon name="i-external" />来源：{{ c.source }}</span>
+              <span class="comp-fact"><AppIcon name="i-calendar" />{{ c.dateRange }}</span>
+              <span class="comp-fact"><AppIcon name="i-clock" />最后核实：{{ c.lastVerified }}</span>
+              <span class="comp-fact"><AppIcon name="i-info" />{{ c.registerState }}</span>
+            </div>
           </div>
-          <span class="page-badge" :class="c.statusClass">{{ c.statusLabel }}</span>
+          <div class="comp-row-side">
+            <span class="page-badge" :class="c.statusClass">{{ c.statusLabel }}</span>
+            <!-- 外部链接要明显说明将打开站外内容（设计书 §14.3） -->
+            <span v-if="c.sourceUrl" class="comp-ext">
+              <AppIcon name="i-external" />打开官网（站外）
+            </span>
+            <span v-else class="comp-ext disabled">
+              <AppIcon name="i-info" />官方链接待录入
+            </span>
+          </div>
         </div>
         <EmptyState
           v-if="!visible.length"

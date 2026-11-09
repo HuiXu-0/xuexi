@@ -184,6 +184,12 @@ export const competitionTimeline = [
     desc: '关注算法、模型应用与实践项目。主办方、参赛条件和报名安排尚待官方核实。',
     meta: '月份：待核实 · 官方链接待录入 · 最后核实时间待录入',
     keywords: '人工智能 应用 算法 模型 竞赛',
+    /* 设计书 §5.4.3：竞赛卡片需要来源、日期、状态与最后核实时间 */
+    source: '主办方官网（待录入）',
+    sourceUrl: '',
+    dateRange: '日期待官方公布',
+    lastVerified: '尚未核实',
+    registerState: '报名信息待核实',
   },
   {
     id: 'comp-b',
@@ -196,6 +202,11 @@ export const competitionTimeline = [
     desc: '适合关注硬件、嵌入式开发与原型验证的学生，当前仅展示方向与备赛内容。',
     meta: '时间：往届资料待整理 · 官方规则待核验',
     keywords: '智能硬件 嵌入式 电子设计 ESP32 竞赛',
+    source: '往届主办方公告（示例）',
+    sourceUrl: '',
+    dateRange: '往届时间参考',
+    lastVerified: '2026-10-15',
+    registerState: '往届赛事，不接受报名',
   },
   {
     id: 'comp-c',
@@ -208,6 +219,11 @@ export const competitionTimeline = [
     desc: '围绕编程基础、算法思维与问题求解能力的赛事方向，具体赛项和资格待确认。',
     meta: '报名时间待核实 · 个人/团队形式待确认',
     keywords: '程序设计 编程 算法 Python 团队 竞赛',
+    source: '主办方官网（待录入）',
+    sourceUrl: '',
+    dateRange: '日期待官方公布',
+    lastVerified: '尚未核实',
+    registerState: '报名方式待确认',
   },
 ]
 

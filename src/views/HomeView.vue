@@ -10,9 +10,11 @@ import {
   discoverFilters,
   heroSuggestions,
   siteNotices,
+  noticeStates,
 } from '../data/content.js'
 import { useSearch, runSearch, clearSearch } from '../composables/useSearch.js'
 import { showToast } from '../composables/useToast.js'
+import { runAgent, AGENT_KEYS, agentRuntime } from '../services/agentRuntime.js'
 
 const router = useRouter()
 const search = useSearch()
@@ -22,12 +24,32 @@ const discoverFilter = ref('all')
 const noticeIndex = ref(0)
 const searchWrapRef = ref(null)
 
+/**
+ * 主要展示区的通知。
+ * 设计书 §5.1.2 A：已过有效期的通知应自动退出主要展示区域（仍可在历史公告查看）；
+ * 置顶和重要标记仅由具备权限的人员设置 —— 排序时置顶优先。
+ */
+const visibleNotices = computed(() =>
+  siteNotices
+    .filter((n) => n.state !== 'expired')
+    .slice()
+    .sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0))
+)
+
+const currentNotice = computed(() => visibleNotices.value[noticeIndex.value] || visibleNotices.value[0])
+
+/** 搜索 Agent 的调用状态（供结果浮层显示） */
+const agentState = computed(() => agentRuntime[AGENT_KEYS.search])
+
+/** 无结果时的调整建议 */
+const emptySuggestions = computed(() => search.suggestions || [])
+
 /* 公告自动轮播：桌面端手动点击圆点切换，移动端自动轮播 */
 let noticeTimer = 0
 
 onMounted(() => {
   noticeTimer = setInterval(() => {
-    noticeIndex.value = (noticeIndex.value + 1) % siteNotices.length
+    noticeIndex.value = (noticeIndex.value + 1) % visibleNotices.value.length
   }, 6000)
   document.addEventListener('click', onOutsideSearch)
 })
@@ -60,11 +82,18 @@ function submitSearch() {
     return
   }
   runSearch(q)
+  /*
+   * 接入搜索 Agent（设计书 §8.2）。
+   * Agent 负责理解自然语言意图、扩展相关概念并组织跨类别结果；
+   * 它必须建立在真实内容之上，不能编造不存在的资源。
+   * 当前为预留接口，真实实现接入后此处会自动显示 Agent 的处理状态。
+   */
+  runAgent(AGENT_KEYS.search, { query: q, count: search.count })
 }
 
 function applySuggestion(q) {
   query.value = q
-  runSearch(q)
+  submitSearch()
 }
 
 function clearOnEscape(e) {
@@ -87,22 +116,33 @@ function discoverAll() {
 
 <template>
   <div>
-    <!-- 官方通知：多条公告轮播 -->
+    <!-- 官方通知：多条公告轮播，含发布方/发布时间/有效期/重要程度与状态 -->
     <section class="notice-strip" aria-label="官方通知">
       <div class="notice-label"><AppIcon name="i-bellring" />官方通知</div>
       <div class="notice-text">
-        <span class="tiny-status">{{ siteNotices[noticeIndex].tag }}</span>
-        <strong>{{ siteNotices[noticeIndex].title }}</strong>
-        <span class="notice-note">{{ siteNotices[noticeIndex].note }}</span>
+        <span class="tiny-status">{{ currentNotice.tag }}</span>
+        <strong>{{ currentNotice.title }}</strong>
+        <span class="notice-note">{{ currentNotice.note }}</span>
+      </div>
+      <div class="notice-meta">
+        <span class="notice-meta-item"><AppIcon name="i-users" />{{ currentNotice.issuer }}</span>
+        <span class="notice-meta-item"><AppIcon name="i-calendar" />{{ currentNotice.publishedAt }}</span>
+        <span class="notice-meta-item"><AppIcon name="i-clock" />有效期至 {{ currentNotice.validUntil }}</span>
+        <span class="notice-importance" :class="currentNotice.importance === '重要' ? 'high' : ''">
+          {{ currentNotice.importance }}
+        </span>
+        <span v-if="currentNotice.state !== 'active'" class="notice-state" :class="currentNotice.state">
+          {{ noticeStates[currentNotice.state]?.label }}
+        </span>
       </div>
       <div class="notice-controls">
         <button
-          v-for="(n, i) in siteNotices"
-          :key="n.title"
+          v-for="n in visibleNotices"
+          :key="n.id"
           class="notice-dot"
-          :class="{ active: i === noticeIndex }"
-          :aria-label="`查看第 ${i + 1} 条公告`"
-          @click="noticeIndex = i"
+          :class="{ active: n.id === currentNotice.id }"
+          :aria-label="`查看公告：${n.title}`"
+          @click="noticeIndex = visibleNotices.findIndex((x) => x.id === n.id)"
         ></button>
       </div>
       <button class="text-link" data-item="notice-1">
@@ -152,6 +192,18 @@ function discoverAll() {
                 <span>{{ search.count }} 条演示匹配</span>
               </div>
 
+              <!--
+                Agent 承载区：设计书 §8.2 规定搜索结果由「全局搜索与发现 Agent」
+                负责组织。这里先接入调用接口并展示其状态，
+                真实 Agent 接上后这段会自动显示真实结果。
+              -->
+              <div class="search-agent-bar" :class="agentState.status">
+                <AppIcon :name="agentState.status === 'loading' ? 'i-clock' : 'i-spark'" />
+                <span v-if="agentState.status === 'loading'">搜索 Agent 正在理解你的需求…</span>
+                <span v-else-if="agentState.status === 'ready'">结果由搜索 Agent 按内容类型组织</span>
+                <span v-else>搜索 Agent 待接入，当前为普通关键词检索结果</span>
+              </div>
+
               <div v-if="search.results.length" class="search-dropdown-list">
                 <button
                   v-for="(r, i) in search.results"
@@ -164,14 +216,35 @@ function discoverAll() {
                   <span class="search-dropdown-text">
                     <strong>{{ r.heading }}</strong>
                     <small>{{ r.desc.slice(0, 72) }}</small>
+                    <!-- 设计书 §13.2：结果需展示标签、作者/来源、更新时间与可见范围 -->
+                    <span class="search-dropdown-meta">
+                      <span v-for="t in r.tags" :key="t" class="search-meta-tag">{{ t }}</span>
+                      <span class="search-meta-item"><AppIcon name="i-users" />{{ r.author }}</span>
+                      <span class="search-meta-item"><AppIcon name="i-clock" />{{ r.updatedAt }}</span>
+                      <span class="search-meta-scope">{{ r.scopeLabel }}</span>
+                    </span>
                   </span>
                   <AppIcon name="i-arrow" />
                 </button>
               </div>
 
+              <!-- 设计书 §8.2.4：无结果时给调整建议，不编造结果 -->
               <div v-else class="search-dropdown-empty">
                 <AppIcon name="i-info" />
-                <span>当前演示内容中没有匹配条目。可以尝试更短的关键词或选择相近方向。</span>
+                <div class="search-empty-body">
+                  <strong>没有找到匹配的内容</strong>
+                  <p>当前演示内容中没有匹配条目。可以尝试：</p>
+                  <div class="search-empty-actions">
+                    <button
+                      v-for="s in emptySuggestions"
+                      :key="s.text"
+                      class="mini-btn"
+                      @click="applySuggestion(s.query)"
+                    >
+                      {{ s.text }}
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

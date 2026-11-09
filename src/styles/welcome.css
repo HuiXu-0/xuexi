@@ -13,7 +13,7 @@
    */
   html[data-device="mobile"] .welcome-gate { min-height: var(--app-height, 100vh); }
   .welcome-backdrop { position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; }
-  .welcome-orb { position: absolute; border-radius: 50%; filter: blur(2px); opacity: .7; }
+  .welcome-orb { position: absolute; border-radius: 50%; opacity: .7; }
   .welcome-orb.one { width: 540px; height: 540px; top: -275px; right: -110px; background: radial-gradient(circle, color-mix(in srgb, var(--green) 17%, transparent), transparent 69%); }
   .welcome-orb.two { width: 440px; height: 440px; bottom: -235px; left: -150px; background: radial-gradient(circle, color-mix(in srgb, var(--blue) 12%, transparent), transparent 70%); }
   .welcome-header { width: min(var(--max), calc(100% - 48px)); min-height: 82px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 20px; border-bottom: 1px solid color-mix(in srgb, var(--line) 75%, transparent); }
@@ -114,9 +114,21 @@
   .welcome-footer-links { display: flex; align-items: center; gap: 16px; }
   .welcome-footer-links .text-link { font-size: 11px; }
   .welcome-footer-note { color: var(--text-faint); font-size: 10px; }
-  .login-screen { width: min(1120px, calc(100% - 48px)); min-height: calc(100svh - 83px); margin: 0 auto; display: grid; grid-template-columns: minmax(0, 1fr) minmax(340px, .8fr); align-items: center; gap: clamp(30px, 7vw, 94px); padding: 42px 0 55px; }
+  /*
+   * 两栏顶部对齐。
+   * 之前用 align-items:center，登录模式（表单矮）与注册模式（表单高 176px）
+   * 切换时整页高度变化，左侧介绍区被垂直居中推着上下位移 88px —— 观感很跳。
+   * 顶部对齐后左侧位置固定，切换时纹丝不动。
+   */
+  .login-screen { width: min(1120px, calc(100% - 48px)); min-height: calc(100svh - 83px); margin: 0 auto; display: grid; grid-template-columns: minmax(0, 1fr) minmax(340px, .8fr); align-items: start; gap: clamp(30px, 7vw, 94px); padding: 42px 0 55px; }
   .login-screen[hidden], .welcome-screen[hidden], .register-only[hidden] { display: none !important; }
-  .login-intro { max-width: 480px; }
+  /*
+   * 左栏宽度要放得下标题的 accent 行。
+   * 原来 480px 装不下「继续你的学习旅程。」9 个字（58px 字号约需 522px），
+   * 被迫折成「继续你的学习旅 / 程。」，末字孤零零占一行很难看。
+   * 放宽到 560px 后标题能完整成行，登录与注册两种模式行数也保持一致。
+   */
+  .login-intro { max-width: min(560px, 100%); position: relative; }
   .login-intro h1 { margin: 20px 0 14px; font-size: var(--title-landing); }
   .login-intro p { margin: 0; color: var(--text-soft); font-size: 13px; line-height: 2; }
   .login-benefits { display: grid; gap: 13px; margin-top: 27px; }
@@ -124,22 +136,139 @@
   .login-benefit .icon-wrap { width: 31px; height: 31px; flex: 0 0 auto; display: grid; place-items: center; border-radius: 10px; color: var(--green); background: var(--surface-tint); }
   .login-benefit .icon { width: 15px; height: 15px; }
   .login-benefit strong { display: block; color: var(--text); font-size: 11px; margin-bottom: 2px; }
-  .auth-card { width: 100%; max-width: 435px; justify-self: end; padding: clamp(22px, 3vw, 32px); border: 1px solid var(--line); border-radius: 23px; background: color-mix(in srgb, var(--surface) 93%, transparent); box-shadow: 0 26px 75px color-mix(in srgb, var(--text) 8%, transparent); backdrop-filter: blur(16px); }
+  /*
+   * 不使用 backdrop-filter。
+   * 背后是两层 radial-gradient 光晕，backdrop-filter 要实时采样并模糊背景，
+   * 表单内容一变就得重算 —— 登录/注册切换时会明显卡顿，
+   * 在部分浏览器上还会出现整片闪白。改用不透明度更高的纯色底，视觉几乎无差别。
+   */
+  .auth-card { width: 100%; max-width: 435px; justify-self: end; padding: clamp(22px, 3vw, 32px); border: 1px solid var(--line); border-radius: 23px; background: color-mix(in srgb, var(--surface) 97%, transparent); box-shadow: 0 26px 75px color-mix(in srgb, var(--text) 8%, transparent); position: relative; }
   .auth-card-head h2 { margin: 0; font-size: 23px; letter-spacing: -.04em; }
   .auth-card-head p { margin: 8px 0 20px; color: var(--text-faint); font-size: 11px; line-height: 1.8; }
-  .auth-tabs { display: grid; grid-template-columns: 1fr 1fr; padding: 4px; margin-bottom: 20px; gap: 4px; border: 1px solid var(--line); border-radius: 12px; background: var(--page); }
-  .auth-tabs button { min-height: 38px; border: 0; border-radius: 9px; background: transparent; color: var(--text-faint); font-size: 11px; font-weight: 750; }
-  .auth-tabs button.active { color: var(--green); background: var(--surface); box-shadow: 0 2px 8px color-mix(in srgb, var(--text) 7%, transparent); }
-  .auth-field { margin-bottom: 14px; }
-  .auth-field label { display: block; margin-bottom: 7px; font-size: 11px; font-weight: 750; }
-  .auth-input-wrap { display: flex; align-items: center; gap: 8px; min-height: 45px; padding: 0 11px; border: 1px solid var(--line); border-radius: 11px; background: var(--page); transition: border-color .2s, box-shadow .2s; }
+  .auth-tabs { display: grid; grid-template-columns: 1fr 1fr; padding: 4px; margin-bottom: 20px; gap: 4px; border: 1px solid var(--line); border-radius: 12px; background: var(--page); position: relative; }
+  .auth-tabs button { min-height: 38px; border: 0; border-radius: 9px; background: transparent; color: var(--text-faint); font-size: 11px; font-weight: 750; position: relative; z-index: 1; transition: color .22s; }
+  .auth-tabs button.active { color: var(--green); }
+  /* 滑动指示器：切换时横向滑过去，给出方向感 */
+  .auth-tabs-indicator { position: absolute; top: 4px; left: 4px; width: calc(50% - 6px); height: calc(100% - 8px); border-radius: 9px; background: var(--surface); box-shadow: 0 2px 8px color-mix(in srgb, var(--text) 7%, transparent); transition: transform .3s cubic-bezier(0.22, 1, 0.36, 1); }
+  .auth-tabs-indicator.on-register { transform: translateX(100%); }
+
+  /*
+   * 登录/注册切换过渡。
+   *
+   * 两份内容在 grid 同一格里叠放，如果同时半透明会互相透出
+   * （旧表单的字叠在新表单上，看着像重影）。所以让**旧内容先快速退场，
+   * 新内容延迟一点点再进场**，重叠窗口被压到很短。
+   */
+  .swap-enter-active, .swap-leave-active {
+    transition: opacity .2s ease, transform .2s cubic-bezier(0.22, 1, 0.36, 1);
+    /* 提前提升到合成层，避免动画过程中触发重绘导致掉帧 */
+    will-change: opacity, transform;
+  }
+  /* 离场快一点：0.12s 内淡完 */
+  .swap-leave-active { transition-duration: .12s; }
+  /* 入场稍晚：等旧的淡得差不多了再开始 */
+  .swap-enter-active { transition-delay: .09s; }
+  .swap-enter-from { opacity: 0; transform: translateY(8px); }
+  .swap-leave-to { opacity: 0; transform: translateY(-8px); }
+  /* 动画结束后撤掉 will-change，避免长期占用图层 */
+  .swap-enter-active:not(.swap-leave-active), .swap-leave-active { backface-visibility: hidden; }
+
+  /*
+   * 左侧介绍区用 grid 叠放。
+   * 用 absolute 叠放会让容器高度塌陷成「当前那一份」的高度，
+   * 切换时容器高度跟着变（实测差 26px），内容区仍然会轻微上下错动。
+   *
+   * 叠放要作用在 **Transition 的直接子元素**（即两份带 key 的内容）上，
+   * 所以 grid 容器是 .login-intro，> * 命中的是那两份内容本身；
+   * 千万别写成 .login-intro-swap > * —— 那会把 kicker/h1/p/benefits
+   * 全部压到同一格，页面直接塌掉。
+   */
+  .login-intro { max-width: min(560px, 100%); position: relative; display: grid; min-height: 424px; }
+  .login-intro > * { grid-area: 1 / 1; }
+
+  /*
+   * 表单区用 grid 叠放，不用 absolute。
+   *
+   * 【踩过的坑】原来这里写的是
+   *   .auth-form.swap-enter-active, .auth-form.swap-leave-active { position: absolute; inset: 0; }
+   * absolute 的包含块是「最近的有 position 的祖先」。当时 .auth-card 没有
+   * position:relative，包含块一路向上找到 .welcome-gate（position:relative），
+   * 于是切换动画期间整份表单被定位到视口左上角 (0,0) 且 inset:0 把它拉成
+   * 100vw × 100vh —— 表单直接盖在左侧介绍区上，底部按钮横跨整个屏幕。
+   * 这才是「闪屏」的真正原因（不是自动聚焦，也不是 backdrop-filter）。
+   *
+   * grid 叠放没有定位语义，两份表单老老实实占同一个格子：
+   *   .auth-form-stack 是容器，> * 命中 Transition 的两份内容本身。
+   *
+   * 不设 min-height：登录与注册字段数不同，卡片高度本就该随之变化。
+   * 强行固定成较高者的值，会在内容较少的模式下留出一大段空白。
+   * 左侧介绍区不会跟着动 —— .login-screen 是 align-items:start，
+   * 两栏各自顶对齐，卡片变高只往下长，左栏位置纹丝不动。
+   */
+  .auth-form-stack { display: grid; }
+  .auth-form-stack > * { grid-area: 1 / 1; }
+  .auth-form { position: relative; }
+  .auth-field { margin-bottom: 14px; position: relative; }
+  /*
+   * 浮动标签（floating label）。
+   * label 初始落在输入框里当占位符，聚焦或有值时上浮成小标签。
+   * 相比 placeholder：聚焦时提示不会消失，浏览器自动填充也不会把提示冲掉。
+   * 用 Vue 的 .filled 类判断「有没有值」，不依赖 :placeholder-shown。
+   */
+  .auth-field > label {
+    position: absolute;
+    left: 38px;
+    top: 18px;
+    z-index: 1;
+    margin: 0;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1;
+    color: var(--text-faint);
+    pointer-events: none;
+    transition: top .2s cubic-bezier(0.2, 0.8, 0.2, 1), font-size .2s, color .2s;
+  }
+  .auth-field:focus-within > label,
+  .auth-field.filled > label {
+    top: 5px;
+    font-size: 9px;
+    font-weight: 700;
+    color: var(--green);
+  }
+  /* 角色选择：设计书 §3.1 三类角色，决定登录后的导航与权限 */
+  .auth-role { margin-bottom: 17px; }
+  .auth-role-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+  .auth-role-head label { font-size: 11px; font-weight: 750; }
+  .auth-role-head span { color: var(--text-faint); font-size: 9px; }
+  .auth-role-list { display: grid; gap: 6px; }
+  .auth-role-item { display: flex; align-items: center; gap: 10px; padding: 9px 11px; border: 1px solid var(--line); border-radius: 11px; background: var(--page); text-align: left; transition: border-color .18s, background .18s; }
+  .auth-role-item:hover { border-color: color-mix(in srgb, var(--green) 40%, var(--line)); }
+  .auth-role-item.active { border-color: var(--green); background: color-mix(in srgb, var(--surface-tint) 70%, var(--page)); }
+  .auth-role-icon { width: 30px; height: 30px; flex: 0 0 auto; display: grid; place-items: center; border-radius: 9px; color: var(--text-faint); background: var(--surface); }
+  .auth-role-item.active .auth-role-icon { color: var(--green); background: var(--surface); }
+  .auth-role-icon .icon { width: 15px; height: 15px; }
+  .auth-role-text { min-width: 0; }
+  .auth-role-text strong { display: block; font-size: 12px; color: var(--text); }
+  .auth-role-text small { display: block; margin-top: 2px; font-size: 9px; line-height: 1.6; color: var(--text-faint); }
+  /* 教师可额外申请的校级内容管理授权（设计书 §4.2） */
+  .auth-extra-grant { display: flex; align-items: flex-start; gap: 8px; margin-top: 9px; padding: 9px 11px; border: 1px dashed var(--line); border-radius: 10px; background: var(--page); cursor: pointer; }
+  .auth-extra-grant input { accent-color: var(--green); margin-top: 2px; flex: 0 0 auto; }
+  .auth-extra-grant strong { display: block; font-size: 11px; color: var(--text); margin-bottom: 2px; }
+  .auth-extra-grant small { display: block; font-size: 9px; line-height: 1.6; color: var(--text-faint); }
+  /*
+   * 浮动标签的样式全部由上面 .auth-field > label 那条规则控制。
+   * 这里原本还有一条 .auth-field label（11px/750），写在后面会覆盖浮动标签的
+   * 12px/500 —— 浮动标签都是 .auth-field 的直接子元素，不需要这条通用规则。
+   */
+  .auth-input-wrap { display: flex; align-items: center; gap: 8px; min-height: 50px; padding: 0 11px; border: 1px solid var(--line); border-radius: 11px; background: var(--page); transition: border-color .2s, box-shadow .2s; }
   .auth-input-wrap:focus-within { border-color: var(--green); box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 10%, transparent); }
   .auth-input-wrap.is-error { border-color: color-mix(in srgb, var(--red) 55%, var(--line)); }
   .auth-input-wrap.is-error:focus-within { border-color: var(--red); box-shadow: 0 0 0 3px color-mix(in srgb, var(--red) 12%, transparent); }
-  .auth-input-wrap > .icon { width: 16px; height: 16px; color: var(--text-faint); }
-  .auth-input-wrap input { width: 100%; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--text); font-size: 12px; }
-  .auth-input-wrap input::placeholder { color: var(--text-faint); }
-  .auth-show-password { border: 0; background: transparent; color: var(--text-faint); font-size: 10px; padding: 5px; white-space: nowrap; }
+  .auth-input-wrap > .icon { width: 16px; height: 16px; color: var(--text-faint); flex: 0 0 auto; }
+  /* 文字下沉，给浮动后的标签让出空间 */
+  .auth-input-wrap input { width: 100%; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--text); font-size: 12px; padding-top: 10px; }
+  .auth-input-wrap input::placeholder { color: transparent; }
+  .auth-show-password { border: 0; background: transparent; color: var(--text-faint); font-size: 10px; padding: 5px; white-space: nowrap; align-self: flex-end; margin-bottom: 8px; }
   .auth-show-password:hover { color: var(--green); }
   /* 字段级错误：直接贴在输入框下方，不需要用户滚到底部找提示条 */
   .auth-error { margin: 6px 0 0; color: var(--red); font-size: 10px; line-height: 1.6; }
@@ -227,7 +356,7 @@
     .welcome-footer { width: calc(100% - 30px); flex-direction: column; align-items: flex-start; gap: 13px; padding-bottom: calc(18px + env(safe-area-inset-bottom)); }
     .welcome-footer-links { flex-wrap: wrap; gap: 13px; }
     .login-screen { width: calc(100% - 30px); min-height: unset; grid-template-columns: minmax(0, 1fr); gap: 21px; padding: 25px 0 calc(28px + env(safe-area-inset-bottom)); }
-    .login-intro { max-width: none; }
+    .login-intro { max-width: none; min-height: 0; }
     .login-intro h1 { margin: 14px 0 8px; font-size: 33px; }
     .login-intro p { font-size: 11px; line-height: 1.8; }
     .login-benefits { grid-template-columns: 1fr; gap: 9px; margin-top: 15px; }

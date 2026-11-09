@@ -2,11 +2,28 @@
 import { ref, computed, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import AppIcon from '../components/AppIcon.vue'
+import { userRoles, roleMeta } from '../data/dict.js'
+import { signIn, authStore } from '../stores/auth.js'
+import { showToast } from '../composables/useToast.js'
 
 const router = useRouter()
 
 const mode = ref('login')
 const isRegister = computed(() => mode.value === 'register')
+
+/**
+ * 角色选择：设计书 §3.1 定义了学生 / 教师 / 平台管理员三类角色，
+ * 各自可见的导航与可执行的操作不同。角色在登录界面选定，登录后即固定。
+ */
+const selectedRole = ref('student')
+const roleOptions = userRoles
+
+/**
+ * 校级内容管理授权（设计书 §4.2）。
+ * 只有教师角色才可能获得该授权；没有它时教师端展示的是申请说明，
+ * 而不是可误触的虚假操作按钮。
+ */
+const contentAdminGranted = ref(false)
 
 const identifier = ref('')
 const displayName = ref('')
@@ -105,12 +122,17 @@ function setMode(next) {
   mode.value = target
   notice.visible = false
   clearErrors()
+  /* 两种模式的字段不同，密码类输入不应带过去 */
+  password.value = ''
+  confirmPassword.value = ''
+  agreement.value = false
   demoEnterLabel.value = isRegister.value ? '先跳过注册，体验平台' : '暂不登录，先体验平台'
-  /* 切换后把焦点交给该模式的首个输入框，避免焦点仍停在已隐藏的字段上 */
-  setTimeout(() => {
-    if (isRegister.value) displayNameRef.value?.focus({ preventScroll: true })
-    else identifierRef.value?.focus({ preventScroll: true })
-  }, 40)
+  /*
+   * 这里**不自动聚焦**输入框。
+   * 之前切换后 40ms 就把焦点交给首个输入框，而此时切换动画（260ms）还没结束 ——
+   * 输入框在动画中途突然获得焦点、边框高亮突变，视觉上就是一次明显的闪屏。
+   * 焦点留在用户刚点的标签上更自然，也顺带避免了滚动跳动。
+   */
 }
 
 function clearErrors() {
@@ -180,9 +202,17 @@ function onSubmit() {
     } catch (_) {}
   }
 
+  /* 记录角色，登录后按角色驱动导航与权限 */
+  const name = displayName.value.trim() || identifier.value.trim()
+  signIn({
+    role: selectedRole.value,
+    displayName: name,
+    contentAdmin: contentAdminGranted.value,
+  })
+
   setNotice(
     isRegister.value ? '注册表单校验完成' : '登录表单校验完成',
-    '这只是前端交互演示，未创建或验证真实账号。点击下方按钮可以继续浏览平台。'
+    `这只是前端交互演示，未创建或验证真实账号。已按「${roleMeta(selectedRole.value).label}」身份进入，导航与权限会随之变化。`
   )
   demoEnterLabel.value = isRegister.value ? '进入平台开始体验' : '继续体验平台'
   demoEnterRef.value?.focus({ preventScroll: true })
@@ -196,6 +226,16 @@ function onHelp() {
 }
 
 function enterPlatform() {
+  /*
+   * 始终以登录页当前选定的角色建立会话。
+   * 之前只在「未登录」时才写角色，导致已登录教师后再来选学生，
+   * 导航与权限仍停留在教师身份 —— 角色选择形同虚设。
+   */
+  signIn({
+    role: selectedRole.value,
+    displayName: displayName.value.trim() || identifier.value.trim(),
+    contentAdmin: contentAdminGranted.value,
+  })
   router.push({ name: 'home' })
 }
 
@@ -213,21 +253,29 @@ onMounted(() => {
 
 <template>
   <section class="login-screen" id="loginPage">
+    <!--
+      左侧介绍区：登录/注册文案不同，切换时用淡入淡出过渡。
+      容器固定高度且内容叠放（position:absolute），避免切换时把整页撑高、顶边位移。
+    -->
     <div class="login-intro">
-      <div class="welcome-kicker"><span class="demo-dot"></span> {{ intro.kicker }}</div>
-      <h1>
-        {{ intro.lead }}<br /><span class="highlight">{{ intro.accent }}</span>
-      </h1>
-      <p>{{ intro.desc }}</p>
+      <Transition name="swap">
+        <div :key="mode" class="login-intro-swap">
+          <div class="welcome-kicker"><span class="demo-dot"></span> {{ intro.kicker }}</div>
+          <h1>
+            {{ intro.lead }}<br /><span class="highlight">{{ intro.accent }}</span>
+          </h1>
+          <p>{{ intro.desc }}</p>
 
-      <div class="login-benefits">
-        <div v-for="b in intro.benefits" :key="b.title" class="login-benefit">
-          <span class="icon-wrap"><AppIcon :name="b.icon" /></span>
-          <div>
-            <strong>{{ b.title }}</strong>{{ b.desc }}
+          <div class="login-benefits">
+            <div v-for="b in intro.benefits" :key="b.title" class="login-benefit">
+              <span class="icon-wrap"><AppIcon :name="b.icon" /></span>
+              <div>
+                <strong>{{ b.title }}</strong>{{ b.desc }}
+              </div>
+            </div>
           </div>
         </div>
-      </div>
+      </Transition>
     </div>
 
     <div class="auth-card">
@@ -237,6 +285,8 @@ onMounted(() => {
       </div>
 
       <div class="auth-tabs" role="tablist" aria-label="登录或注册">
+        <!-- 滑动指示器：切换时用位移过渡，比直接变色更有方向感 -->
+        <span class="auth-tabs-indicator" :class="{ 'on-register': isRegister }" aria-hidden="true"></span>
         <button
           :class="{ active: !isRegister }"
           type="button"
@@ -268,8 +318,62 @@ onMounted(() => {
         <strong>{{ notice.title }}</strong><span>{{ notice.message }}</span>
       </div>
 
-      <form novalidate @submit.prevent="onSubmit">
-        <div class="auth-field">
+      <!--
+        表单区：登录与注册字段不同，切换时整块淡入淡出。
+
+        容器用 grid 叠放（两份表单占同一格），**不要用 position:absolute 叠放**：
+        absolute 的包含块是最近的有定位的祖先，而 .auth-card 原本没有
+        position:relative，包含块会一路向上找到 .welcome-gate，
+        结果切换瞬间整份表单被拉到视口左上角 (0,0) 并撑成 100vw，
+        压住左侧介绍区 —— 表现为「切一下就整页闪白 / 按钮横跨全屏」。
+
+        min-height 固定为两模式中较高者，切换时容器高度恒定。
+      -->
+      <div class="auth-form-stack">
+      <Transition name="swap">
+        <form :key="mode" novalidate class="auth-form" @submit.prevent="onSubmit">
+        <!-- 角色选择：决定登录后的导航与可操作范围 -->
+        <div class="auth-role">
+          <div class="auth-role-head">
+            <label>选择身份</label>
+            <span>不同身份的可见导航与操作权限不同</span>
+          </div>
+          <div class="auth-role-list" role="radiogroup" aria-label="选择身份">
+            <button
+              v-for="r in roleOptions"
+              :key="r.key"
+              class="auth-role-item"
+              :class="{ active: selectedRole === r.key }"
+              type="button"
+              role="radio"
+              :aria-checked="String(selectedRole === r.key)"
+              @click="selectedRole = r.key"
+            >
+              <span class="auth-role-icon"><AppIcon :name="r.icon" /></span>
+              <span class="auth-role-text">
+                <strong>{{ r.label }}</strong>
+                <small>{{ r.desc }}</small>
+              </span>
+            </button>
+          </div>
+
+          <!-- 教师可额外申请校级内容管理授权（设计书 §4.2 独立授权） -->
+          <label v-if="selectedRole === 'teacher'" class="auth-extra-grant">
+            <input v-model="contentAdminGranted" type="checkbox" />
+            <span>
+              <strong>同时申请「校级内容管理」授权</strong>
+              <small>普通教师默认没有该权限；勾选后可在教师端维护校级通知。</small>
+            </span>
+          </label>
+        </div>
+
+        <!--
+          浮动标签（floating label）。
+          label 初始落在输入框内当占位符用，聚焦或已有内容时上浮成小标签，
+          这样输入框聚焦时不会把提示文字清空 —— 用 placeholder 做不到这一点。
+          placeholder 保留一个空格，是为了让 :not(:placeholder-shown) 能判断「有没有值」。
+        -->
+        <div class="auth-field" :class="{ filled: !!identifier }">
           <label for="authIdentifier">校园邮箱 / 学号 / 用户名</label>
           <div class="auth-input-wrap" :class="{ 'is-error': errors.identifier }">
             <AppIcon name="i-users" />
@@ -278,7 +382,7 @@ onMounted(() => {
               ref="identifierRef"
               v-model="identifier"
               autocomplete="username"
-              placeholder="请输入校园邮箱或用户名"
+              placeholder=" "
               :aria-invalid="!!errors.identifier"
               aria-describedby="errIdentifier"
               required
@@ -289,7 +393,7 @@ onMounted(() => {
 
         <!-- 注册的次要字段并排，避免表单过高 -->
         <div v-if="isRegister" class="auth-grid">
-          <div class="auth-field">
+          <div class="auth-field" :class="{ filled: !!displayName }">
             <label for="authDisplayName">平台显示名称</label>
             <div class="auth-input-wrap" :class="{ 'is-error': errors.displayName }">
               <AppIcon name="i-grid" />
@@ -298,7 +402,7 @@ onMounted(() => {
                 ref="displayNameRef"
                 v-model="displayName"
                 autocomplete="nickname"
-                placeholder="展示名称"
+                placeholder=" "
                 :aria-invalid="!!errors.displayName"
                 required
               />
@@ -306,7 +410,7 @@ onMounted(() => {
             <p v-if="errors.displayName" class="auth-error">{{ errors.displayName }}</p>
           </div>
 
-          <div class="auth-field">
+          <div class="auth-field" :class="{ filled: !!school }">
             <label for="authSchool">学校 / 院系</label>
             <div class="auth-input-wrap" :class="{ 'is-error': errors.school }">
               <AppIcon name="i-book" />
@@ -315,7 +419,7 @@ onMounted(() => {
                 ref="schoolRef"
                 v-model="school"
                 autocomplete="organization"
-                placeholder="学校或院系"
+                placeholder=" "
                 :aria-invalid="!!errors.school"
                 required
               />
@@ -324,7 +428,7 @@ onMounted(() => {
           </div>
         </div>
 
-        <div class="auth-field">
+        <div class="auth-field" :class="{ filled: !!password }">
           <label for="authPassword">密码</label>
           <div class="auth-input-wrap" :class="{ 'is-error': errors.password }">
             <AppIcon name="i-shield" />
@@ -335,7 +439,7 @@ onMounted(() => {
               :type="showPassword ? 'text' : 'password'"
               :autocomplete="isRegister ? 'new-password' : 'current-password'"
               minlength="6"
-              placeholder="请输入密码（至少 6 位）"
+              placeholder=" "
               :aria-invalid="!!errors.password"
               required
             />
@@ -362,7 +466,7 @@ onMounted(() => {
           </div>
         </div>
 
-        <div v-if="isRegister" class="auth-field">
+        <div v-if="isRegister" class="auth-field" :class="{ filled: !!confirmPassword }">
           <label for="authConfirmPassword">确认密码</label>
           <div class="auth-input-wrap" :class="{ 'is-error': errors.confirm }">
             <AppIcon name="i-shield" />
@@ -373,7 +477,7 @@ onMounted(() => {
               :type="showConfirm ? 'text' : 'password'"
               autocomplete="new-password"
               minlength="6"
-              placeholder="请再次输入密码"
+              placeholder=" "
               :aria-invalid="!!errors.confirm"
               required
             />
@@ -410,7 +514,9 @@ onMounted(() => {
         <button class="solid-btn auth-submit" type="submit">
           {{ submitLabel }} <AppIcon name="i-arrow" />
         </button>
-      </form>
+        </form>
+      </Transition>
+      </div>
 
       <div class="auth-divider">前端演示版本</div>
 

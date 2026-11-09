@@ -2,6 +2,7 @@
 import { ref, computed } from 'vue'
 import AppIcon from '../components/AppIcon.vue'
 import EmptyState from '../components/EmptyState.vue'
+import RelatedBlock from '../components/RelatedBlock.vue'
 import { noteFilters, notes } from '../data/pages.js'
 import { demoStore, toggleSave } from '../stores/demo.js'
 import { showToast } from '../composables/useToast.js'
@@ -127,6 +128,9 @@ function openCreateNote(event) {
             {{ demoStore.savedItems[n.title] ? '已收藏' : '收藏' }}
           </button>
         </div>
+
+        <!-- 相关内容（设计书 §9.3）：笔记↔笔记、笔记↔案例 等关联 -->
+        <RelatedBlock :title="n.title" :limit="3" heading="相关笔记与案例" />
       </article>
 
       <EmptyState

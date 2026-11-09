@@ -191,24 +191,93 @@ export const notifications = [
  * 首页顶部公告条。
  * 此前只有一条公告、一行字，占满整行却承载不了实际信息；
  * 现在支持多条轮播，桌面端可手动切换，移动端自动轮播。
+ *
+ * 设计书 §5.1.2 A 官方通知区要求每条通知至少展示：
+ *   标题、发布单位/发布人、发布时间、有效期（如适用）、重要程度、正文入口
+ * 规则：置顶与重要标记仅由有权限的人员设置；过期通知退出主要展示区；
+ *       已撤回或被更正的显示合理状态。
  */
 export const siteNotices = [
   {
+    id: 'notice-1',
     tag: '演示公告',
     title: '校园学习平台试运行说明（示例公告）',
     note: '平台示例数据',
     detail: '本页内容用于演示交互与信息结构，正式上线前会替换为学校已核实的公告。',
+    issuer: '平台运营组（示例）',
+    publishedAt: '2026-11-01',
+    validUntil: '长期有效',
+    importance: '普通',
+    state: 'active',
+    pinned: false,
+    category: 'platform',
   },
   {
+    id: 'notice-2',
     tag: '资源更新',
     title: '本周新增 3 组嵌入式实践笔记与 2 份竞赛复盘（示例）',
     note: '内容示例',
     detail: '示例条目来自演示数据，用于展示通知条在多公告情况下的呈现方式。',
+    issuer: '学习资源维护组（示例）',
+    publishedAt: '2026-11-04',
+    validUntil: '2026-11-30',
+    importance: '普通',
+    state: 'active',
+    pinned: false,
+    category: 'resource',
   },
   {
-    tag: '使用提醒',
-    title: '发布内容请注明来源并设置可见范围（示例）',
-    note: '规则示例',
-    detail: '内容展示不等于转载许可，转载、修改与商业使用需要分别确认。',
+    id: 'notice-3',
+    tag: '重要通知',
+    title: '关于 2026 年秋季学期竞赛信息核实的说明（示例）',
+    note: '示例公告',
+    detail:
+      '部分竞赛条目的报名时间仍以主办方发布为准。请在使用前点击来源链接核对；已过有效期的条目会退出主要展示区域。',
+    issuer: '教务处（示例）',
+    publishedAt: '2026-10-20',
+    validUntil: '2026-12-31',
+    importance: '重要',
+    state: 'active',
+    pinned: true,
+    category: 'official',
+  },
+  {
+    id: 'notice-4',
+    tag: '已更正',
+    title: '上条通知的报名截止日期已更正（示例）',
+    note: '示例公告',
+    detail: '原通知中的截止日期有误，现已更正并标注更正时间，请以最新版本为准。',
+    issuer: '教务处（示例）',
+    publishedAt: '2026-10-18',
+    validUntil: '已过期',
+    importance: '普通',
+    state: 'corrected',
+    pinned: false,
+    category: 'official',
+  },
+  {
+    id: 'notice-5',
+    tag: '已过期',
+    title: '2026 年暑期实践活动说明（示例）',
+    note: '示例公告',
+    detail: '该活动已结束，按规则退出主要展示区域，但仍可在历史公告中查看。',
+    issuer: '团委（示例）',
+    publishedAt: '2026-07-02',
+    validUntil: '2026-09-01',
+    importance: '普通',
+    state: 'expired',
+    pinned: false,
+    category: 'official',
   },
 ]
+
+/**
+ * 通知状态语义（设计书 §11.1 的状态体系在通知场景的映射）。
+ * 已撤回 / 已更正的公告要显示合理状态，避免用户继续依据错误信息行动。
+ */
+export const noticeStates = {
+  active: { label: '有效', tone: 'green', desc: '通知当前有效，展示在主要区域。' },
+  corrected: { label: '已更正', tone: 'amber', desc: '内容已被更正，请以最新版本为准。' },
+  withdrawn: { label: '已撤回', tone: 'amber', desc: '通知已被撤回，不应再据此行动。' },
+  expired: { label: '已过期', tone: 'gray', desc: '已过有效期，退出主要展示区域。' },
+}

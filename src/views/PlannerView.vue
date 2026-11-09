@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import AppIcon from '../components/AppIcon.vue'
+import AgentSlot from '../components/AgentSlot.vue'
 import { plannerLevels, plannerHours, plannerDurations, plannerPrinciples } from '../data/pages.js'
 import { demoStore } from '../stores/demo.js'
 import { showToast } from '../composables/useToast.js'
@@ -152,6 +153,9 @@ function reset() {
           <AppIcon name="i-info" />
           <div>当前按钮生成的是规则示例，不代表模型已连接。正式 Agent 必须明确假设，不伪造资源链接，也不承诺竞赛或职业结果。</div>
         </div>
+
+        <!-- 规划 Agent 承载区：设计书 §8.4，构建方式确定后在此接入实际功能 -->
+        <AgentSlot agent-key="planner" class="mt-15" />
       </aside>
     </div>
 
