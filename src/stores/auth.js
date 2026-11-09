@@ -88,7 +88,7 @@ export const currentNav = computed(() => navByRole[authStore.role] || navByRole.
 export function canAccess(routeName) {
   if (!routeName) return true
   const studentRoutes = ['home', 'forum', 'notes', 'competitions', 'resources', 'cases', 'planner', 'profile']
-  const teacherRoutes = ['teacher', 'teacherGroups', 'teacherReviews', 'teacherTasks', 'teacherContent']
+  const teacherRoutes = ['teacher', 'teacherGroups', 'teacherReviews', 'teacherAuthorizations', 'teacherTasks', 'teacherContent']
   const adminRoutes = ['admin']
 
   if (teacherRoutes.includes(routeName)) return authStore.role === 'teacher' || authStore.role === 'admin'

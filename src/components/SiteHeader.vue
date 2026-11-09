@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppIcon from './AppIcon.vue'
 import { notifications } from '../data/content.js'
@@ -120,6 +120,33 @@ function onThemeToggle() {
 
 /* 二级下拉：桌面端 hover / 点击展开，移动端在汉堡菜单里平铺 */
 const openGroup = ref('')
+
+/*
+ * 下拉展开时给 html 加一个标记类，并写入菜单实际高度。
+ *
+ * 浮层菜单必然会盖住下方的页面标题，看起来像「排版错乱」。
+ * 让页面主内容按菜单高度整体下沉，把标题让出来 ——
+ * 菜单仍然浮在内容之上，但不会挡住任何文字。
+ * 高度必须实测：教师端 4 项、学生端 5 项，写死的值会对不上。
+ */
+watch(
+  () => openGroup.value,
+  async (v) => {
+    if (import.meta.env.SSR) return
+    const root = document.documentElement
+    if (!v) {
+      root.classList.remove('nav-dropdown-open')
+      return
+    }
+    root.classList.add('nav-dropdown-open')
+    await nextTick()
+    const dd = root.querySelector('.nav-dropdown')
+    if (dd) {
+      const h = Math.round(dd.getBoundingClientRect().height)
+      if (h > 0) root.style.setProperty('--nav-drop-h', `${h}px`)
+    }
+  }
+)
 
 /*
  * 关闭延时。

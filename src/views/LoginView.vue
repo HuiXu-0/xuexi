@@ -240,7 +240,18 @@ function enterPlatform() {
     contentAdmin: contentAdminGranted.value,
     canReview: reviewGranted.value,
   })
-  router.push({ name: 'home' })
+
+  /*
+   * 按角色进入对应工作台，而不是一律回学生首页。
+   * 教师/管理员选完身份还得再点一次顶栏导航才能到自己的工作台，
+   * 这个多余步骤让人以为身份没生效。
+   */
+  const landing = {
+    teacher: 'teacher',
+    admin: 'admin',
+    student: 'home',
+  }
+  router.push({ name: landing[selectedRole.value] || 'home' })
 }
 
 onMounted(() => {

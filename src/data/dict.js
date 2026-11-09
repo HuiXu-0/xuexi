@@ -158,7 +158,7 @@ export const navByRole = {
       children: [
         { route: 'teacherGroups', label: '我管理的小组' },
         { route: 'teacherReviews', label: '学生案例推荐' },
-        { route: 'teacherReviews', label: '授权确认状态' },
+        { route: 'teacherAuthorizations', label: '授权确认状态' },
         { route: 'teacherTasks', label: '被分配的审核事项', requires: 'canReview' },
       ],
     },

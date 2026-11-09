@@ -5,8 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build && node scripts/generate-404.js",
+    "build": "node scripts/check-routes.mjs && vite build && node scripts/generate-404.js",
     "build:local": "vite build && node scripts/generate-404.js",
+    "check:routes": "node scripts/check-routes.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

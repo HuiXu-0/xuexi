@@ -146,14 +146,6 @@ function withdraw(rec) {
   setRecommendState(rec.id, 'withdrawn', '教师撤回推荐')
   showToast('推荐已撤回。学生撤回授权时，正式平台需同步处理页面与搜索索引。')
 }
-
-/* ---------- 授权确认状态（导航里的「授权确认状态」入口） ---------- */
-const authRecords = computed(() =>
-  Object.entries(demoStore.caseAuthorizations || {}).map(([caseId, v]) => ({
-    caseId,
-    ...v,
-  }))
-)
 </script>
 
 <template>
@@ -326,26 +318,5 @@ const authRecords = computed(() =>
       </div>
     </div>
 
-    <!-- 授权确认状态 -->
-    <div class="page-section">
-      <div class="page-panel">
-        <div class="page-section-head">
-          <div>
-            <h2>授权确认状态</h2>
-            <p>学生对具体展示范围的确认记录。学生授权范围是最终公开范围的上限。</p>
-          </div>
-        </div>
-        <div v-if="authRecords.length" class="page-list-row" v-for="a in authRecords" :key="a.caseId">
-          <span class="page-list-icon"><AppIcon name="i-shield" /></span>
-          <div class="page-list-content">
-            <strong>{{ a.caseId }}</strong>
-            <small>更新于 {{ a.updatedAt }}</small>
-          </div>
-        </div>
-        <div v-else class="page-empty">
-          还没有授权确认记录。学生在案例页确认展示范围后，记录会出现在这里。
-        </div>
-      </div>
-    </div>
   </section>
 </template>

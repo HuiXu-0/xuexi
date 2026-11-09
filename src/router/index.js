@@ -42,6 +42,11 @@ const routes = [
         component: () => import('../views/teacher/TeacherReviewsView.vue'),
       },
       {
+        path: 'teacher/authorizations',
+        name: 'teacherAuthorizations',
+        component: () => import('../views/teacher/TeacherAuthView.vue'),
+      },
+      {
         path: 'teacher/tasks',
         name: 'teacherTasks',
         component: () => import('../views/teacher/TeacherTasksView.vue'),
