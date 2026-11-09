@@ -89,7 +89,17 @@ export function canAccess(routeName) {
   if (!routeName) return true
   const studentRoutes = ['home', 'forum', 'notes', 'competitions', 'resources', 'cases', 'planner', 'profile']
   const teacherRoutes = ['teacher', 'teacherGroups', 'teacherReviews', 'teacherAuthorizations', 'teacherTasks', 'teacherContent']
-  const adminRoutes = ['admin']
+  const adminRoutes = [
+    'admin',
+    'adminAccounts',
+    'adminReports',
+    'adminNotices',
+    'adminFeedback',
+    'adminRules',
+    'adminAgents',
+    'adminAudit',
+    'adminConfig',
+  ]
 
   if (teacherRoutes.includes(routeName)) return authStore.role === 'teacher' || authStore.role === 'admin'
   if (adminRoutes.includes(routeName)) return authStore.role === 'admin'
@@ -98,7 +108,7 @@ export function canAccess(routeName) {
 
 /** 权限不足时的说明，用于路由守卫与页面内提示 */
 export function denyReason(routeName) {
-  if (routeName === 'admin') return '这是平台管理员端，需要账号具备相应授权才能访问。'
+  if (routeName?.startsWith('admin')) return '这是平台管理员端，需要账号具备相应授权才能访问。'
   if (routeName === 'teacherTasks') return '审核任务队列需要被授予内容审核职责后才能查看。'
   if (routeName === 'teacherContent') return '校级首页内容管理仅对获授权的学校内容管理员开放。'
   if (routeName?.startsWith('teacher')) return '这是教师端页面，需要教师角色才能访问。'

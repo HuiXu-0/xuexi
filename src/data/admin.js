@@ -1,86 +1,25 @@
 /**
- * 管理员端的模块结构。
+ * 管理员端数据层（设计书 §7）。
  *
- * 设计书 §4.3 定义了 9 个模块：
- *   1 管理工作台　2 账号与权限管理　3 内容与举报管理
- *   4 官方首页内容管理　5 反馈与创新建议管理　6 审核规则管理
- *   7 Agent 管理　8 操作审计记录　9 平台基础配置
- *
- * §7.1：事项应显示类型、严重程度、提交时间、当前负责人和处理状态。
- * §7.2.2：涉及角色变化、内容删除恢复、封禁解封、规则更新的操作都要留痕。
+ * 与教师端的数据**完全分开**：
+ *   教师端的官方通知走 `data/teacher.js` + `stores/teacher.js`，
+ *   管理员端的官方通知走本文件 + `stores/admin.js`。
+ * 两侧的管理范围、权限与审计口径都不同，混在一起会导致
+ * 「教师改了管理员的记录」这类越权问题。
  */
 
-export const adminModules = [
-  {
-    key: 'dashboard',
-    icon: 'i-grid',
-    title: '管理工作台',
-    desc: '聚合待处理事项：审核异常、举报、授权争议、反馈建议、申诉、失效链接与公告维护提醒。',
-    actions: ['筛选', '分配负责人', '批量处理低风险重复事项'],
-  },
-  {
-    key: 'accounts',
-    icon: 'i-users',
-    title: '账号与权限管理',
-    desc: '查看账号基础信息与授权范围，分配或撤销角色权限，限制功能、封禁与解封，并处理申诉。',
-    actions: ['搜索账号', '分配角色', '限制功能', '查看违规记录'],
-  },
-  {
-    key: 'reports',
-    icon: 'i-bellring',
-    title: '内容与举报管理',
-    desc: '处理笔记、案例、帖子、资源与竞赛信息的举报，核实后给出处理结果与理由。',
-    actions: ['查看上下文', '临时隐藏', '通知当事人', '允许申诉'],
-  },
-  {
-    key: 'notices',
-    icon: 'i-bell',
-    title: '官方首页内容管理',
-    desc: '由获授权的内容管理员维护官方通知：创建、编辑、设定有效期、发布、撤回与归档。',
-    actions: ['创建通知', '设置有效期', '撤回归档'],
-  },
-  {
-    key: 'feedback',
-    icon: 'i-send',
-    title: '反馈与创新建议管理',
-    desc: '分配 Bug 与功能建议的负责人，追踪状态，记录验证结果并回复提交者。',
-    actions: ['分配负责人', '更新状态', '回复提交者'],
-  },
-  {
-    key: 'rules',
-    icon: 'i-shield',
-    title: '审核规则管理',
-    desc: '维护违禁词、辱骂骚扰、垃圾广告、恶意链接、隐私泄露与侵权风险规则，可回滚不合理变更。',
-    actions: ['新增规则', '停用规则', '查看命中与误判', '回滚变更'],
-  },
-  {
-    key: 'agents',
-    icon: 'i-spark',
-    title: 'Agent 管理',
-    desc: '仅涉及产品层面的开关与治理：启用状态、适用范围、阈值配置、运行状态与结果抽查。',
-    actions: ['启用/停用', '设置适用范围', '抽查结果', '记录配置变化'],
-  },
-  {
-    key: 'audit',
-    icon: 'i-file',
-    title: '操作审计记录',
-    desc: '记录角色变化、内容删除恢复、封禁解封、规则更新等操作的操作者、时间、对象、原因与结果。',
-    actions: ['按类型筛选', '按操作者筛选', '关联案件编号'],
-  },
-  {
-    key: 'config',
-    icon: 'i-grid',
-    title: '平台基础配置',
-    desc: '维护资源类别、技术方向标签、竞赛类型、问题状态与用户可见的社区规则说明。',
-    actions: ['维护分类', '合并同义标签', '停用分类并迁移'],
-  },
-]
-
-/** §7.1 工作台事项的严重程度 */
+/* ---------- ① 工作台事项的严重程度（§7.1） ---------- */
 export const severityLevels = {
   low: { label: '低', tone: 'gray', desc: '可批量处理的重复事项。' },
   medium: { label: '中', tone: 'amber', desc: '需要人工判断，但影响有限。' },
   high: { label: '高', tone: 'red', desc: '影响他人权益或平台公信力，需优先处理。' },
+}
+
+/** 事项处理状态 */
+export const workItemStates = {
+  pending: { label: '待处理', tone: 'amber', desc: '已登记，等待分配与核实。' },
+  reviewing: { label: '处理中', tone: 'blue', desc: '正在核实材料。' },
+  done: { label: '已处理', tone: 'green', desc: '已完成处置并记录了原因与处理人。' },
 }
 
 /** §7.2.1 处罚层级建议 */
@@ -101,9 +40,12 @@ export const auditTypes = {
   rule: '规则更新',
   agent: 'Agent 配置变化',
   publish: '内容发布',
+  feedback: '反馈处理',
+  work: '事项处置',
+  config: '平台配置',
 }
 
-/** 审计记录示例 */
+/** 审计记录示例（演示基线；本次会话的新记录由 stores/admin.js 追加） */
 export const auditRecords = [
   {
     id: 'AUD-018',
@@ -171,7 +113,7 @@ export const adminWorkItems = [
     desc: '举报人认为帖子含不实信息，需要结合上下文核实。',
     submittedAt: '2026-11-04 09:30',
     owner: '管理员演示账号',
-    state: 'reviewing',
+    state: 'pending',
   },
   {
     id: 'W-103',
@@ -191,7 +133,7 @@ export const adminWorkItems = [
     desc: '资源条目指向的教程页已无法访问，需核实并替换。',
     submittedAt: '2026-11-03 15:20',
     owner: '资源维护组',
-    state: 'reviewing',
+    state: 'pending',
   },
   {
     id: 'W-105',
@@ -215,9 +157,467 @@ export const adminWorkItems = [
   },
 ]
 
-/** 事项处理状态 */
-export const workItemStates = {
-  pending: { label: '待处理', tone: 'amber' },
-  reviewing: { label: '处理中', tone: 'blue' },
-  done: { label: '已处理', tone: 'green' },
+/* ---------- ② 账号与权限（§7.2） ---------- */
+export const accountSeeds = [
+  {
+    id: 'ACC-001',
+    name: '学生演示账号',
+    role: '学生',
+    scope: '仅本人内容',
+    status: 'normal',
+    violations: 0,
+    registeredAt: '2026-09-12',
+  },
+  {
+    id: 'ACC-002',
+    name: '教师演示账号',
+    role: '教师',
+    scope: '本人小组 + 被分配审核事项',
+    status: 'normal',
+    violations: 1,
+    registeredAt: '2026-09-08',
+  },
+  {
+    id: 'ACC-003',
+    name: '受限账号演示',
+    role: '学生',
+    scope: '禁止发布（限制发布）',
+    status: 'restricted',
+    violations: 2,
+    registeredAt: '2026-10-02',
+  },
+  {
+    id: 'ACC-004',
+    name: '封禁账号演示',
+    role: '学生',
+    scope: '无法登录',
+    status: 'banned',
+    violations: 3,
+    registeredAt: '2026-09-20',
+  },
+  {
+    id: 'ACC-005',
+    name: '申诉中账号演示',
+    role: '学生',
+    scope: '限制发布（申诉受理中）',
+    status: 'appealing',
+    violations: 2,
+    registeredAt: '2026-09-28',
+  },
+]
+
+/** 账号状态定义 */
+export const accountStates = {
+  normal: { label: '正常', tone: 'green', desc: '可正常使用全部已授权功能。' },
+  restricted: { label: '限制中', tone: 'amber', desc: '部分功能受限，登录正常。' },
+  appealing: { label: '申诉中', tone: 'blue', desc: '已提交申诉，等待管理员受理。' },
+  banned: { label: '已封禁', tone: 'red', desc: '暂时无法登录与使用平台。' },
 }
+
+/* ---------- ③ 内容与举报（§7.3） ---------- */
+/** 举报处置流程状态 */
+export const reportFlow = {
+  submitted: { label: '已提交', tone: 'gray', desc: '举报已送达，等待管理员确认受理。' },
+  accepted: { label: '已受理', tone: 'amber', desc: '已确认受理，正在核实材料。' },
+  hidden: { label: '临时隐藏', tone: 'blue', desc: '争议期间内容暂时下线，当事人已收到通知。' },
+  resolved: { label: '已处理', tone: 'green', desc: '已给出处理结果与理由，当事人可申诉。' },
+  dismissed: { label: '不成立', tone: 'gray', desc: '核实后举报不成立，已说明理由。' },
+  appealed: { label: '申诉中', tone: 'blue', desc: '当事人对处理结果提出申诉，等待复核。' },
+  closed: { label: '已结案', tone: 'green', desc: '申诉复核完成，处理结果生效。' },
+}
+
+export const reportFlowOrder = [
+  'submitted',
+  'accepted',
+  'hidden',
+  'resolved',
+  'dismissed',
+  'appealed',
+  'closed',
+]
+
+export function reportMeta(key) {
+  return reportFlow[key] || reportFlow.submitted
+}
+
+/** 举报案件种子 */
+export const reportSeeds = [
+  {
+    id: 'RP-201',
+    contentType: '优秀案例',
+    title: '优秀案例：共同作者授权争议',
+    desc: '案例申请公开团队作品，但一名成员未确认授权。',
+    reporter: '项目组匿名成员',
+    submittedAt: '2026-11-04 10:12',
+    severity: 'high',
+    state: 'accepted',
+  },
+  {
+    id: 'RP-202',
+    contentType: '论坛帖子',
+    title: '论坛帖子：内容举报',
+    desc: '举报人认为帖子含不实信息，需要结合上下文核实。',
+    reporter: '李同学',
+    submittedAt: '2026-11-04 09:30',
+    severity: 'medium',
+    state: 'submitted',
+  },
+  {
+    id: 'RP-203',
+    contentType: '学习笔记',
+    title: '学习笔记：疑似搬运他人实验记录',
+    desc: '笔记结构与来源站高度相似，缺少来源标注。',
+    reporter: '王同学',
+    submittedAt: '2026-11-03 17:05',
+    severity: 'medium',
+    state: 'hidden',
+  },
+  {
+    id: 'RP-204',
+    contentType: '资源导航条目',
+    title: '资源导航：外部教程链接失效',
+    desc: '资源条目指向的教程页已无法访问。',
+    reporter: '系统巡检',
+    submittedAt: '2026-11-03 15:20',
+    severity: 'low',
+    state: 'resolved',
+  },
+  {
+    id: 'RP-205',
+    contentType: '竞赛信息',
+    title: '竞赛信息：报名截止日期有误',
+    desc: '公示的截止日期与主办方通知不一致。',
+    reporter: '张同学',
+    submittedAt: '2026-11-02 19:08',
+    severity: 'low',
+    state: 'appealed',
+  },
+]
+
+/* ---------- ④ 官方通知（管理员端独立实现，§7.4） ---------- */
+/**
+ * 管理员端官方通知种子数据。
+ * 与教师端 `data/teacher.js` 的 officialNotices 是两套独立数据，
+ * 因为管理员端负责的是全站级别的正式通知，
+ * 权限范围、审计要求和撤回规则都更严格。
+ */
+export const adminNoticeSeeds = [
+  {
+    id: 'NT-2026-0031',
+    title: '关于开展本学期实践项目申报的通知',
+    body: '各学院：本学期实践项目申报自即日起开放，截止 11 月 25 日 18:00。请指导教师组织学生提交项目简介与成果说明。',
+    publisher: '教务处',
+    scope: 'campus',
+    importance: 'high',
+    pinned: true,
+    state: 'published',
+    publishedAt: '2026-11-08',
+    expireAt: '2026-11-25',
+  },
+  {
+    id: 'NT-2026-0028',
+    title: '实验室开放时间调整',
+    body: '自 11 月 10 日起，电子实验楼 B 区开放时间调整为 8:00-21:00，需预约使用。',
+    publisher: '实验教学中心',
+    scope: 'campus',
+    importance: 'normal',
+    pinned: false,
+    state: 'published',
+    publishedAt: '2026-11-05',
+    expireAt: '2026-12-31',
+  },
+  {
+    id: 'NT-2026-0026',
+    title: '竞赛资源条目补充说明',
+    body: '此前发布的竞赛条目已补充报名截止时间，请以最新条目为准。',
+    publisher: '教务处',
+    scope: 'campus',
+    importance: 'normal',
+    pinned: false,
+    state: 'corrected',
+    corrected: true,
+    publishedAt: '2026-10-28',
+    expireAt: '',
+  },
+  {
+    id: 'NT-2026-0020',
+    title: '寒假开放借阅安排（已过期）',
+    body: '寒假期间图书馆开放借阅时间安排。',
+    publisher: '图书馆',
+    scope: 'campus',
+    importance: 'normal',
+    pinned: false,
+    state: 'expired',
+    publishedAt: '2026-10-10',
+    expireAt: '2026-10-31',
+  },
+  {
+    id: 'NT-2026-0033',
+    title: '学生创新创业训练计划说明',
+    body: '草稿：拟说明训练计划的项目类型、周期与结题要求，待补充附件说明。',
+    publisher: '创新创业学院',
+    scope: 'campus',
+    importance: 'normal',
+    pinned: false,
+    state: 'draft',
+    publishedAt: '',
+    expireAt: '',
+  },
+]
+
+/** 管理员端通知状态 */
+export const adminNoticeStates = {
+  draft: { label: '草稿', tone: 'gray', desc: '尚未发布，仅管理员可见。' },
+  published: { label: '已发布', tone: 'green', desc: '正在首页通知区展示。' },
+  corrected: { label: '已更正', tone: 'amber', desc: '已发布且发生过重要更正，界面会显示更正说明。' },
+  withdrawn: { label: '已撤回', tone: 'amber', desc: '内容暂时下线，撤回原因会公示。' },
+  expired: { label: '已过期', tone: 'gray', desc: '超过有效期，自动退出展示但保留可查。' },
+  archived: { label: '已归档', tone: 'gray', desc: '历史内容，保留可查但不参与推荐。' },
+}
+
+export function adminNoticeMeta(key) {
+  return adminNoticeStates[key] || adminNoticeStates.draft
+}
+
+/* ---------- ⑤ 反馈与创新建议（§7.5） ---------- */
+/**
+ * 反馈 9 状态。
+ * 设计书 §12.3 要求「提交者能看到处理进度」，
+ * 所以状态不能只有「待处理 / 已处理」两档。
+ */
+export const feedbackStates = {
+  submitted: { label: '已提交', tone: 'gray', desc: '反馈已送达，等待分配负责人。' },
+  assigned: { label: '已分配', tone: 'blue', desc: '已确定负责人，进入处理流程。' },
+  reproducing: { label: '复现中', tone: 'blue', desc: '正在复现问题或评估需求可行性。' },
+  planned: { label: '已排期', tone: 'amber', desc: '已确认有效并进入版本计划。' },
+  inProgress: { label: '开发中', tone: 'amber', desc: '正在实现，尚未发布。' },
+  testing: { label: '测试中', tone: 'amber', desc: '实现完成，进入验证阶段。' },
+  resolved: { label: '已解决', tone: 'green', desc: '问题已修复或需求已实现。' },
+  rejected: { label: '不采纳', tone: 'gray', desc: '经评估暂不处理，已说明原因。' },
+  closed: { label: '已关闭', tone: 'gray', desc: '流程结束，提交者可重新开启。' },
+}
+
+export const feedbackStateOrder = [
+  'submitted',
+  'assigned',
+  'reproducing',
+  'planned',
+  'inProgress',
+  'testing',
+  'resolved',
+  'rejected',
+  'closed',
+]
+
+export function feedbackMeta(key) {
+  return feedbackStates[key] || feedbackStates.submitted
+}
+
+export const feedbackSeeds = [
+  {
+    id: 'FB-301',
+    kind: 'bug',
+    title: '移动端底部导航在部分机型被安全区遮挡',
+    desc: '在 iPhone 14 上底部标签栏被 Home 指示条压住，点击最右侧标签困难。',
+    submitter: '李同学',
+    submittedAt: '2026-11-03 21:45',
+    severity: 'medium',
+    state: 'reproducing',
+    owner: '资源维护组',
+  },
+  {
+    id: 'FB-302',
+    kind: 'bug',
+    title: '小组置顶通知发布后未出现在讨论区顶部',
+    desc: '发布成功后刷新页面才可见，怀疑是缓存问题。',
+    submitter: '王同学',
+    submittedAt: '2026-11-02 14:20',
+    severity: 'low',
+    state: 'resolved',
+    owner: '资源维护组',
+  },
+  {
+    id: 'FB-303',
+    kind: 'suggestion',
+    title: '建议：竞赛条目增加「报名截止」提醒',
+    desc: '希望临近截止时在竞赛资源页顶部提醒，避免错过报名。',
+    submitter: '张同学',
+    submittedAt: '2026-10-29 11:08',
+    severity: 'low',
+    state: 'planned',
+    owner: '内容管理员',
+  },
+  {
+    id: 'FB-304',
+    kind: 'suggestion',
+    title: '建议：学习笔记支持按标签导出目录',
+    desc: '期末整理笔记时希望按标签生成可打印目录。',
+    submitter: '陈同学',
+    submittedAt: '2026-10-26 19:33',
+    severity: 'low',
+    state: 'submitted',
+    owner: '',
+  },
+  {
+    id: 'FB-305',
+    kind: 'bug',
+    title: '案例授权确认页在窄屏下按钮被遮挡',
+    desc: '780px 宽度以下，底部「确认授权范围」按钮显示不全。',
+    submitter: '赵同学',
+    submittedAt: '2026-10-21 08:52',
+    severity: 'high',
+    state: 'testing',
+    owner: '资源维护组',
+  },
+]
+
+/* ---------- ⑥ 审核规则（§7.6） ---------- */
+export const ruleSeeds = [
+  {
+    id: 'R-01',
+    name: '垃圾广告与刷屏',
+    type: '确定性规则',
+    scope: '笔记 / 帖子 / 资源简介',
+    hits: 42,
+    falsePositives: 3,
+    state: 'active',
+    version: 'v3',
+  },
+  {
+    id: 'R-02',
+    name: '辱骂与人身攻击',
+    type: '需上下文判断',
+    scope: '全部文字字段',
+    hits: 18,
+    falsePositives: 7,
+    state: 'active',
+    version: 'v2',
+  },
+  {
+    id: 'R-03',
+    name: '恶意链接与诈骗诱导',
+    type: '确定性规则',
+    scope: '帖子 / 资源链接',
+    hits: 11,
+    falsePositives: 1,
+    state: 'active',
+    version: 'v2',
+  },
+  {
+    id: 'R-04',
+    name: '隐私信息泄露',
+    type: '需上下文判断',
+    scope: '头像名称 / 个人简介',
+    hits: 5,
+    falsePositives: 2,
+    state: 'active',
+    version: 'v1',
+  },
+  {
+    id: 'R-05',
+    name: '侵权与未经授权转载',
+    type: '需人工核实',
+    scope: '优秀案例 / 附件',
+    hits: 3,
+    falsePositives: 0,
+    state: 'draft',
+    version: 'v1',
+  },
+]
+
+export const ruleStates = {
+  active: { label: '启用', tone: 'green', desc: '规则参与自动审核。' },
+  draft: { label: '草稿', tone: 'gray', desc: '规则已配置但未启用，不参与审核。' },
+  disabled: { label: '已停用', tone: 'amber', desc: '规则停用，历史命中记录保留。' },
+}
+
+export function ruleMeta(key) {
+  return ruleStates[key] || ruleStates.draft
+}
+
+/* ---------- ⑨ 平台基础配置（§7.8） ---------- */
+export const configSeeds = [
+  {
+    id: 'C-01',
+    name: '编程基础',
+    kind: '资源类别',
+    state: 'active',
+    note: '含 Python / JavaScript 等子方向',
+    migration: '',
+  },
+  {
+    id: 'C-02',
+    name: '嵌入式与硬件',
+    kind: '资源类别',
+    state: 'active',
+    note: 'ESP32 / 单片机 / EDA 等',
+    migration: '',
+  },
+  {
+    id: 'C-03',
+    name: '入门',
+    kind: '学习阶段标签',
+    state: 'active',
+    note: '适用于零基础学习者',
+    migration: '',
+  },
+  {
+    id: 'C-04',
+    name: '零基础',
+    kind: '学习阶段标签',
+    state: 'pendingMerge',
+    note: '与「入门」语义重复',
+    migration: '将迁移到「入门」，既有内容数量 34 条',
+  },
+  {
+    id: 'C-05',
+    name: '学科竞赛',
+    kind: '竞赛类型',
+    state: 'active',
+    note: '与「个人赛」「团队赛」是不同维度，不可合并',
+    migration: '',
+  },
+]
+
+export const configStates = {
+  active: { label: '启用', tone: 'green', desc: '该分类当前对外可见。' },
+  pendingMerge: { label: '待合并', tone: 'amber', desc: '确认迁移方式后生效，迁移前不丢内容。' },
+  disabled: { label: '已停用', tone: 'gray', desc: '不再对外展示，既有内容已按迁移策略处理。' },
+}
+
+export function configMeta(key) {
+  return configStates[key] || configStates.active
+}
+
+/* ---------- ⑦ Agent 管理（§7.7） ---------- */
+/**
+ * Agent 治理配置。
+ * 设计书 §8 的硬约束：Agent 不能自行修改权限、绕过审核规则或取得管理员角色，
+ * 所以这里只有产品层面的开关与阈值，不涉及给 Agent 授权。
+ */
+export const agentConfigSeeds = [
+  {
+    key: 'search',
+    title: '搜索 Agent',
+    scope: '全站检索与推荐',
+    threshold: 0.62,
+    enabled: true,
+    note: '置信度低于阈值时回退到关键词检索，不做二次生成。',
+  },
+  {
+    key: 'moderation',
+    title: '内容审核 Agent',
+    scope: '笔记 / 帖子 / 案例 / 资源简介',
+    threshold: 0.78,
+    enabled: true,
+    note: '低于阈值一律转人工复核，Agent 不做最终处置。',
+  },
+  {
+    key: 'planner',
+    title: '学习规划 Agent',
+    scope: '个人学习计划生成',
+    threshold: 0.55,
+    enabled: true,
+    note: '规划结果仅作建议，最终计划由学生确认。',
+  },
+]

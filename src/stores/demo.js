@@ -5,6 +5,7 @@ import { reactive } from 'vue'
  * 全部只存在于内存，刷新即清空 —— 与原 HTML 原型行为一致。
  */
 export const demoStore = reactive({
+  /** Agent 开关（搜索 Agent 的实际状态在 agentRuntime 里，这里是产品层面的总开关） */
   agentState: { search: true, moderation: true, planner: true },
 
   /** 已加入的小组：{ [title]: true } */
@@ -21,16 +22,12 @@ export const demoStore = reactive({
   cases: [],
   recommendations: [],
 
-  /** 管理工单状态：{ [id]: { label, class } } */
-  adminTaskStatus: {},
   /** 案例授权流程：{ [caseId]: { state, sections, note, updatedAt } } */
   caseAuthorizations: {},
   /** 教师推荐申请记录 */
   recommendRequests: [],
   /** 教师工作台待确认推荐数 */
   teacherPendingCount: 1,
-  /** 管理员工单计数 */
-  adminReportsCount: 3,
 })
 
 export function toggleJoin(name, mode) {

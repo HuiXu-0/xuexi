@@ -35,11 +35,16 @@ const teacherTabs = [
   { route: 'profile', label: '我的', icon: 'i-grid' },
 ]
 
-/** 管理员端：管理台 / 举报 / 反馈 / 我的 */
+/**
+ * 管理员端：管理台 / 举报 / 通知 / 我的
+ *
+ * 手机上没法用桌面端的下拉菜单，9 个模块塞进底部 tab 不现实，
+ * 所以挑 3 个高频模块上 tab，其余靠页面内的模块切换条。
+ */
 const adminTabs = [
   { route: 'admin', label: '管理台', icon: 'i-shield' },
-  { route: 'forum', label: '内容', icon: 'i-users' },
-  { route: 'notes', label: '笔记', icon: 'i-file' },
+  { route: 'adminReports', label: '举报', icon: 'i-bellring' },
+  { route: 'adminNotices', label: '通知', icon: 'i-bell' },
   { route: 'profile', label: '我的', icon: 'i-grid' },
 ]
 

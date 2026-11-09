@@ -56,7 +56,47 @@ const routes = [
         name: 'teacherContent',
         component: () => import('../views/teacher/TeacherContentView.vue'),
       },
-      { path: 'admin', name: 'admin', component: () => import('../views/AdminView.vue') },
+      { path: 'admin', name: 'admin', component: () => import('../views/admin/AdminDashboardView.vue') },
+      {
+        path: 'admin/accounts',
+        name: 'adminAccounts',
+        component: () => import('../views/admin/AdminAccountsView.vue'),
+      },
+      {
+        path: 'admin/reports',
+        name: 'adminReports',
+        component: () => import('../views/admin/AdminReportsView.vue'),
+      },
+      {
+        path: 'admin/notices',
+        name: 'adminNotices',
+        component: () => import('../views/admin/AdminNoticesView.vue'),
+      },
+      {
+        path: 'admin/feedback',
+        name: 'adminFeedback',
+        component: () => import('../views/admin/AdminFeedbackView.vue'),
+      },
+      {
+        path: 'admin/rules',
+        name: 'adminRules',
+        component: () => import('../views/admin/AdminRulesView.vue'),
+      },
+      {
+        path: 'admin/agents',
+        name: 'adminAgents',
+        component: () => import('../views/admin/AdminAgentsView.vue'),
+      },
+      {
+        path: 'admin/audit',
+        name: 'adminAudit',
+        component: () => import('../views/admin/AdminAuditView.vue'),
+      },
+      {
+        path: 'admin/config',
+        name: 'adminConfig',
+        component: () => import('../views/admin/AdminConfigView.vue'),
+      },
     ],
   },
 

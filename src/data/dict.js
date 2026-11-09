@@ -174,7 +174,28 @@ export const navByRole = {
     { key: 'profile', label: '个人中心', route: 'profile', icon: 'i-file' },
   ],
   admin: [
-    { key: 'admin', label: '管理工作台', route: 'admin', icon: 'i-grid' },
+    {
+      key: 'adminModules',
+      label: '管理模块',
+      icon: 'i-shield',
+      /*
+       * 设计书 §4.3：管理员端共 9 个模块，各自独立路由。
+       * 「管理工作台」只在下拉里出现一次 —— 如果同时做一级入口，
+       * 顶层按钮和下拉触发器会同时高亮（route.name === item.route
+       * 与 isChildActive 都会命中）。
+       */
+      children: [
+        { route: 'admin', label: '管理工作台' },
+        { route: 'adminAccounts', label: '账号与权限' },
+        { route: 'adminReports', label: '内容与举报' },
+        { route: 'adminNotices', label: '官方通知' },
+        { route: 'adminFeedback', label: '反馈与建议' },
+        { route: 'adminRules', label: '审核规则' },
+        { route: 'adminAgents', label: 'Agent 管理' },
+        { route: 'adminAudit', label: '操作审计' },
+        { route: 'adminConfig', label: '基础配置' },
+      ],
+    },
     { key: 'notes', label: '学习笔记', route: 'notes', icon: 'i-file' },
     { key: 'profile', label: '个人中心', route: 'profile', icon: 'i-file' },
   ],

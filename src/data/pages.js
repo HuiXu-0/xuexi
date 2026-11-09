@@ -345,55 +345,10 @@ export const teacherManagedGroups = [
   { icon: 'i-book', title: '课程学习答疑', desc: '组织问题讨论并将有效答案关联至学习内容。', meta: '演示小组 · 授权范围待配置' },
 ]
 
-/* ---------- 管理员控制台 ---------- */
-export const adminTasks = [
-  {
-    id: 'DEMO-001',
-    icon: 'i-shield',
-    title: '资源条目：来源授权待确认',
-    desc: '用户反馈某条外部资源的使用许可描述不清，需要核实原始来源与可共享范围。',
-    meta: '案件编号：DEMO-001 · 类型：授权问题',
-  },
-  {
-    id: 'DEMO-002',
-    icon: 'i-file',
-    title: '优秀案例：共同作者授权争议',
-    desc: '先按规则限制争议材料的进一步传播，再联系相关当事人补充依据。',
-    meta: '案件编号：DEMO-002 · 类型：作品权属',
-  },
-  {
-    id: 'DEMO-003',
-    icon: 'i-message',
-    title: '论坛帖子：内容举报（演示）',
-    desc: '需要结合上下文与社区规则判断，避免仅凭单个关键词作出结论。',
-    meta: '案件编号：DEMO-003 · 类型：社区内容',
-  },
-]
-
-export const adminShortcuts = [
-  {
-    icon: 'i-users',
-    title: '账号与权限',
-    desc: '调整角色、授权范围、限制和封禁；关键操作应留痕。',
-    actions: [{ adminAction: 'users', label: '打开演示账号列表' }],
-  },
-  {
-    icon: 'i-bell',
-    title: '官方通知管理',
-    desc: '由授权内容管理员维护官方首页通知。',
-    actions: [{ adminAction: 'notices', label: '打开通知管理示例' }],
-  },
-  {
-    icon: 'i-send',
-    title: 'Bug 与功能建议',
-    desc: '可分配负责人、追踪状态、记录验证结果并回复提交者。',
-    actions: [
-      { modal: 'bug', label: '提交反馈示例' },
-      { modal: 'suggestion', label: '建议入口' },
-    ],
-  },
-]
-
+/*
+ * Agent 定义元信息（设计书 §8）。
+ * 三个 Agent 的职责与边界原文来自设计书，界面各处共用这一份。
+ */
 export const agentDefinitions = [
   {
     key: 'search',
