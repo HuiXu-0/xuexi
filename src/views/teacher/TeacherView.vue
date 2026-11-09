@@ -314,8 +314,14 @@ function replyQuestion(q) {
       </div>
     </div>
 
-    <div class="page-layout-two">
-      <!-- §6.1.2 我管理的学习小组 + 近期动态 -->
+    <!--
+      下面几个区块一律通栏。
+      之前「我管理的学习小组」与「近期发布」并排，左块 667px、右块 493px，
+      和上下方的通栏面板（1180px）对不齐 —— 同一页里出现三种宽度。
+      通栏后所有区块宽度一致，左右边缘对齐到同一条基准线。
+    -->
+    <div class="page-section">
+      <!-- §6.1.2 我管理的学习小组 -->
       <div class="page-panel">
         <div class="page-section-head">
           <div>
@@ -344,51 +350,53 @@ function replyQuestion(q) {
           </span>
         </div>
       </div>
+    </div>
 
-      <div>
-        <!-- §6.1.2 等待人工复核的内容（仅审核权限时显示） -->
-        <div v-if="canReview" class="page-panel">
-          <div class="page-section-head">
-            <div>
-              <h2>等待人工复核</h2>
-              <p>仅显示你被分配的审核事项。</p>
-            </div>
-            <button class="mini-btn" @click="go('teacherTasks')">审核队列</button>
+    <!-- §6.1.2 等待人工复核的内容（仅审核权限时显示） -->
+    <div v-if="canReview" class="page-section">
+      <div class="page-panel">
+        <div class="page-section-head">
+          <div>
+            <h2>等待人工复核</h2>
+            <p>仅显示你被分配的审核事项。</p>
           </div>
-          <div v-for="t in humanReviewTasks" :key="t.id" class="page-list-row">
-            <span class="page-list-icon"><AppIcon :name="t.typeIcon" /></span>
-            <div class="page-list-content">
-              <strong>{{ t.title }}</strong>
-              <p>{{ t.reason }}</p>
-              <small>{{ t.type }} · {{ t.riskLabel }} · 截止 {{ t.dueAt }}</small>
-            </div>
-            <span class="page-badge" :class="t.stateMeta?.tone">{{ t.stateMeta?.label }}</span>
-          </div>
+          <button class="mini-btn" @click="go('teacherTasks')">审核队列</button>
         </div>
-
-        <!-- §6.1.2 近期发布的推荐资源或公告 -->
-        <div class="page-panel">
-          <div class="page-section-head">
-            <div>
-              <h2>近期发布</h2>
-              <p>你发布的推荐资源与公告。</p>
-            </div>
+        <div v-for="t in humanReviewTasks" :key="t.id" class="page-list-row">
+          <span class="page-list-icon"><AppIcon :name="t.typeIcon" /></span>
+          <div class="page-list-content">
+            <strong>{{ t.title }}</strong>
+            <p>{{ t.reason }}</p>
+            <small>{{ t.type }} · {{ t.riskLabel }} · 截止 {{ t.dueAt }}</small>
           </div>
-          <div v-for="p in publishedItems" :key="p.id" class="page-list-row">
-            <span class="page-list-icon"><AppIcon :name="p.kindIcon" /></span>
-            <div class="page-list-content">
-              <strong>{{ p.title }}</strong>
-              <p>{{ p.desc }}</p>
-              <small>{{ p.kind }} · {{ p.scope }} · {{ p.publishedAt }}</small>
-            </div>
-            <span class="page-badge" :class="p.stateMeta.tone">{{ p.stateMeta.label }}</span>
-          </div>
+          <span class="page-badge" :class="t.stateMeta?.tone">{{ t.stateMeta?.label }}</span>
         </div>
       </div>
     </div>
 
-    <div class="page-layout-two">
-      <!-- §6.1.2 需要回复的学生问题 / 反馈 -->
+    <!-- §6.1.2 近期发布的推荐资源或公告 -->
+    <div class="page-section">
+      <div class="page-panel">
+        <div class="page-section-head">
+          <div>
+            <h2>近期发布</h2>
+            <p>你发布的推荐资源与公告。</p>
+          </div>
+        </div>
+        <div v-for="p in publishedItems" :key="p.id" class="page-list-row">
+          <span class="page-list-icon"><AppIcon :name="p.kindIcon" /></span>
+          <div class="page-list-content">
+            <strong>{{ p.title }}</strong>
+            <p>{{ p.desc }}</p>
+            <small>{{ p.kind }} · {{ p.scope }} · {{ p.publishedAt }}</small>
+          </div>
+          <span class="page-badge" :class="p.stateMeta.tone">{{ p.stateMeta.label }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- §6.1.2 需要回复的学生问题 / 反馈 -->
+    <div class="page-section">
       <div class="page-panel">
         <div class="page-section-head">
           <div>
@@ -407,8 +415,10 @@ function replyQuestion(q) {
         </div>
         <div v-if="!openQuestions.length" class="page-empty">没有待回复的问题。</div>
       </div>
+    </div>
 
-      <!-- §6.1.2 相关内容状态统计 -->
+    <!-- §6.1.2 相关内容状态统计 -->
+    <div class="page-section">
       <div class="page-panel">
         <div class="page-section-head">
           <div>

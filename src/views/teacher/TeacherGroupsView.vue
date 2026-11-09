@@ -329,8 +329,13 @@ function onAssignCoManager() {
       </div>
     </div>
 
-    <div class="page-layout-two">
-      <!-- 置顶通知（A 档） -->
+    <!--
+      置顶通知与小组规则各占一整行。
+      之前两者并排，每块只有容器宽度的一半 —— 同一页里
+      「频道结构」是通栏、下面两个是半栏，看着就是「宽的宽窄的窄」。
+      通栏后所有区块宽度一致，左���右边缘对齐到同一条基准线。
+    -->
+    <div class="page-section">
       <div class="page-panel">
         <div class="page-section-head">
           <div>
@@ -339,7 +344,7 @@ function onAssignCoManager() {
           </div>
         </div>
 
-        <div class="auth-field">
+        <div class="auth-field field-narrow">
           <label for="pinnedTitle">通知标题</label>
           <div class="auth-input-wrap">
             <AppIcon name="i-bellring" />
@@ -359,8 +364,10 @@ function onAssignCoManager() {
           </div>
         </div>
       </div>
+    </div>
 
-      <!-- 小组规则维护（B 档） -->
+    <!-- 小组规则维护（B 档） -->
+    <div class="page-section">
       <div class="page-panel">
         <div class="page-section-head">
           <div>
@@ -371,7 +378,7 @@ function onAssignCoManager() {
         <ul class="rule-list">
           <li v-for="(r, i) in active.rules" :key="i">{{ r }}</li>
         </ul>
-        <div class="auth-field mt-12">
+        <div class="auth-field field-narrow mt-12">
           <label for="ruleInput">新增规则</label>
           <div class="auth-input-wrap">
             <AppIcon name="i-file" />

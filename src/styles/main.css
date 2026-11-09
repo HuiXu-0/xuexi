@@ -507,6 +507,14 @@
   .select-full { width: 100%; }
   .rules-list { margin: 0; padding-left: 18px; color: var(--text-soft); font-size: 11px; line-height: 2; }
 
+  /* ===== 通栏下的单行输入框 =====
+     平台子页面现在是通栏 1180px（区块宽度统一），
+     但一个横贯全宽的输入框在宽屏上很扎眼 —— 视线要横跨 1100px 才找到右端。
+     给单行输入框一个适中的上限，正文/多行文本仍占满宽度。 */
+  .field-narrow { max-width: 560px; }
+  .field-narrow .auth-input-wrap { max-width: 100%; }
+  .field-mid { max-width: 720px; }
+
   /* ===== 移动端专属：底部标签栏 =====
      用 [data-device="mobile"] 而不是媒体查询驱动 ——
      手机竖屏宽度虽然窄，但桌面浏览器把窗口拖窄时不该出现底部 tab。 */
@@ -827,7 +835,18 @@
   .agent-slot-boundary-label { display: block; margin-bottom: 6px; font-size: var(--fs-list-meta); font-weight: 750; letter-spacing: .06em; color: var(--text-faint); text-transform: uppercase; }
   .agent-slot-boundary p { margin: 0; font-size: var(--fs-list-meta); line-height: 1.8; color: var(--text-faint); }
   .agent-slot-desc { margin-top: 5px !important; }
-  .page-layout-two { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(320px, .85fr); gap: var(--gap-block); align-items: start; }
+  /*
+   * 两栏布局：**等宽**两栏。
+   *
+   * 之前是 `minmax(0, 1.15fr) minmax(320px, .85fr)` ——
+   * 320px 的下限会强制右栏不能更窄，实际算出来是 667px vs 493px。
+   * 于是同一页里出现"上面通栏 1180px、下面两个 667/493"，
+   * 右边缘还比通栏面板的内缩进多缩一截，看着就是「宽的宽窄的窄」。
+   *
+   * 现在两栏严格 1:1，所有块的左右边缘对齐到同一条基准线上。
+   * minmax(0, ...) 而不是 320px 下限：窄屏时两栏等比压缩，不会撑破容器。
+   */
+  .page-layout-two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gap-block); align-items: start; }
   .page-list { border: 1px solid var(--line); background: var(--surface); border-radius: 16px; padding: 6px var(--pad-panel); }
   .page-list-row { display: flex; align-items: flex-start; gap: 15px; padding: var(--pad-row) 0; border-bottom: 1px solid var(--line); }
   .page-list-row:last-child { border-bottom: 0; }

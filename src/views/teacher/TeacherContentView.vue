@@ -236,7 +236,7 @@ const previewMode = ref('desktop')
             <button class="mini-btn" @click="showForm = false">收起</button>
           </div>
 
-          <div class="auth-field">
+          <div class="auth-field field-mid">
             <label for="noticeTitle">通知标题</label>
             <div class="auth-input-wrap">
               <AppIcon name="i-bellring" />

@@ -8,6 +8,7 @@
     "build": "node scripts/check-routes.mjs && vite build && node scripts/generate-404.js",
     "build:local": "vite build && node scripts/generate-404.js",
     "check:routes": "node scripts/check-routes.mjs",
+    "check:widths": "node scripts/check-widths.mjs",
     "preview": "vite preview",
     "verify:all": "node scripts/verify-all.mjs",
     "verify:teacher": "node scripts/verify-teacher.mjs",
