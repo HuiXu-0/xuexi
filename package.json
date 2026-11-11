@@ -9,6 +9,8 @@
     "build:local": "vite build && node scripts/generate-404.js",
     "check:routes": "node scripts/check-routes.mjs",
     "check:widths": "node scripts/check-widths.mjs",
+    "check:vocab": "node scripts/check-vocab.mjs",
+    "audit:docs": "node scripts/audit-agent-docs.mjs",
     "preview": "vite preview",
     "verify:all": "node scripts/verify-all.mjs",
     "verify:teacher": "node scripts/verify-teacher.mjs",
