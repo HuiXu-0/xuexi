@@ -58,6 +58,7 @@ app.include_router(resources.router)
 app.include_router(search.router)
 app.include_router(moderation.router)
 app.include_router(learning.router)
+app.include_router(learning.agent_router)
 app.include_router(admin.router)
 
 

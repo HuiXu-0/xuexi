@@ -19,6 +19,10 @@ from app.services import learning_service as svc
 from app.services.knowledge_service import concepts_for_skills
 
 router = APIRouter(prefix="/api/learning", tags=["learning"])
+
+# Agent 类接口单独挂到 /api/agents，与搜索 Agent 保持同一前缀约定
+# （设计书 §8.2：三个 Agent 共用同一套 envelope 与调用约定）
+agent_router = APIRouter(prefix="/api/agents", tags=["learning-agent"])
 AGENT_KEY = "learning_planning_agent"
 
 
@@ -184,7 +188,7 @@ def list_goals(ctx: RequiredUser, db: DbSession) -> list[dict[str, Any]]:
     ]
 
 
-@router.post("/agents/learning-plans/generate", response_model=AgentEnvelope)
+@agent_router.post("/learning-plans/generate", response_model=AgentEnvelope)
 def generate_plan(
     payload: PlanGenerateRequest, ctx: RequiredUser, db: DbSession
 ) -> AgentEnvelope:
@@ -242,7 +246,7 @@ class PlanConfirmRequest(BaseModel):
     draft: dict[str, Any] = Field(default_factory=dict)
 
 
-@router.post("/learning/plans/confirm", status_code=201)
+@router.post("/plans/confirm", status_code=201)
 def confirm_plan(
     payload: PlanConfirmRequest, ctx: RequiredUser, db: DbSession
 ) -> dict[str, Any]:
@@ -259,7 +263,7 @@ def confirm_plan(
     return {"plan_id": plan.id, "version": plan.version, "status": plan.status}
 
 
-@router.get("/learning/plans/{plan_id}")
+@router.get("/plans/{plan_id}")
 def get_plan(plan_id: str, ctx: RequiredUser, db: DbSession) -> dict[str, Any]:
     """查看计划详情。"""
     from sqlalchemy import select
@@ -311,7 +315,7 @@ def get_plan(plan_id: str, ctx: RequiredUser, db: DbSession) -> dict[str, Any]:
     }
 
 
-@router.post("/learning/tasks/{task_id}/status")
+@router.post("/tasks/{task_id}/status")
 def update_task(
     task_id: str, payload: TaskStatusUpdate, ctx: RequiredUser, db: DbSession
 ) -> dict[str, Any]:
@@ -329,7 +333,7 @@ def update_task(
     return {"task_id": task.id, "status": task.status}
 
 
-@router.post("/learning/plans/{plan_id}/adjust")
+@router.post("/plans/{plan_id}/adjust")
 def adjust_plan(
     plan_id: str, payload: PlanAdjustRequest, ctx: RequiredUser, db: DbSession
 ) -> dict[str, Any]:

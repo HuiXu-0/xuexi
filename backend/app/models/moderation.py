@@ -68,7 +68,9 @@ class ModerationCase(Base):
     __tablename__ = "moderation_cases"
     __table_args__ = (
         Index("ix_case_status", "status"),
-        Index("ix_case_target", "target_type", "target_id"),
+        # 注意：目标列是 content_type / content_id（不是 target_*），
+        # 索引名沿用 ix_case_target 以保持 schema.sql 一致
+        Index("ix_case_target", "content_type", "content_id"),
     )
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)

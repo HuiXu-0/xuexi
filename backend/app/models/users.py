@@ -77,6 +77,10 @@ class Role(Base):
     permissions: Mapped[list["RolePermission"]] = relationship(
         back_populates="role", cascade="all, delete-orphan", lazy="selectin"
     )
+    # 持有该角色的用户（与 UserRole.role 配对）
+    user_roles: Mapped[list["UserRole"]] = relationship(
+        back_populates="role", cascade="all, delete-orphan", lazy="selectin"
+    )
 
 
 class Permission(Base):
@@ -106,7 +110,8 @@ class UserRole(Base):
     granted_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.now)
 
     user: Mapped["User"] = relationship(back_populates="roles")
-    role: Mapped["Role"] = relationship(back_populates="permissions", lazy="selectin")
+    # 指向 Role.user_roles —— 不是 Role.permissions（那是 RolePermission 的关系）
+    role: Mapped["Role"] = relationship(back_populates="user_roles", lazy="selectin")
 
 
 class RolePermission(Base):
