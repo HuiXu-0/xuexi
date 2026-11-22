@@ -8,7 +8,10 @@ const BASE = process.env.PREVIEW_BASE || 'https://huixu-0.github.io/xuexi'
 
 const browser = await chromium.launch({
   executablePath: 'C:/Program Files/Google/Chrome/Application/chrome.exe',
-  args: ['--no-sandbox'],
+  // 本机装了 Steam++ 一类的本地 MITM 代理，它对 github.io / github.com 的
+  // 上游路由不稳（会返回 502 或直接超时），但直连是通的。
+  // 验证线上站点时强制绕过代理，避免把网络问题误判成站点问题。
+  args: ['--no-sandbox', '--no-proxy-server'],
 })
 const ctx = await browser.newContext({ viewport: { width: 1440, height: 1000 } })
 const page = await ctx.newPage()
@@ -19,8 +22,19 @@ page.on('console', (m) => {
 })
 page.on('pageerror', (e) => errors.push('PAGEERROR: ' + e.message))
 
+/** 打开页面并等 Vue 渲染出内容。
+ *
+ * 不用 networkidle：本机直连 github.io 首包要 10 秒左右，
+ * networkidle 在这种情况下会稳定超时（那是网络慢，不是站点坏）。
+ */
+async function visit(path) {
+  await page.goto(BASE + path, { waitUntil: 'domcontentloaded', timeout: 60000 })
+  await page.waitForSelector('h1, .page-panel, .page-content-card, .auth-screen', { timeout: 25000 })
+  await page.waitForTimeout(700)
+}
+
 async function setRole(role) {
-  await page.goto(BASE + '/login', { waitUntil: 'networkidle' })
+  await visit('/login')
   await page.evaluate((r) => {
     localStorage.setItem('campus-auth', JSON.stringify({
       role: r,
@@ -54,8 +68,7 @@ for (const [role, routes] of groups) {
   await setRole(role)
   console.log(`\n--- 线上 ${role} ---`)
   for (const [name, path] of routes) {
-    await page.goto(BASE + path, { waitUntil: 'networkidle' })
-    await page.waitForTimeout(900)
+    await visit(path)
     const o = await page.evaluate(() => ({
       scroll: document.documentElement.scrollWidth,
       client: document.documentElement.clientWidth,
@@ -70,8 +83,7 @@ for (const [role, routes] of groups) {
 
 /* 字号实测（确认线上加载的是新样式） */
 await setRole('teacher')
-await page.goto(BASE + '/teacher', { waitUntil: 'networkidle' })
-await page.waitForTimeout(600)
+await visit('/teacher')
 const m = await page.evaluate(() => {
   const pick = (s) => {
     const el = document.querySelector(s)
