@@ -24,3 +24,6 @@ venv/
 # Python 构建产物
 *.egg-info/
 build/
+
+# Node 导出的前端数据快照（由 dump_frontend_data.mjs 生成，可随时重建）
+backend/scripts/_frontend_data.json

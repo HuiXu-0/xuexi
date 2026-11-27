@@ -222,7 +222,10 @@ def test_learning_goals_crud(client, seeded):
 
     r = client.get("/api/learning/goals", headers=h)
     assert r.status_code == 200
-    assert any(g["id"] == goal_id for g in r.json()["items"])
+    # 该接口直接返回数组（不是 {items: [...]}）
+    goals = r.json()
+    assert isinstance(goals, list)
+    assert any(g["id"] == goal_id for g in goals)
 
 
 # ──────────────────────────────────────────────────────────────

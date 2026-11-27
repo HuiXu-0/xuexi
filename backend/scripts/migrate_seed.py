@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import json
+import subprocess
 import sys
 import uuid
 from datetime import datetime, timedelta
@@ -23,6 +24,52 @@ from pathlib import Path
 BACKEND_ROOT = Path(__file__).resolve().parent.parent
 PROJECT_ROOT = BACKEND_ROOT.parent
 sys.path.insert(0, str(BACKEND_ROOT))
+
+
+class _Mod:
+    """把 dict 包成支持属性访问的对象。
+
+    原来直接用 importlib 加载前端 .js 模块，拿到的是 module 对象（能点属性）。
+    换成 JSON 之后是普通 dict，这里包一层保持调用点不变。
+    """
+
+    def __init__(self, data: dict):
+        self.__dict__.update(data)
+
+
+_FRONTEND_JSON = BACKEND_ROOT / "scripts" / "_frontend_data.json"
+_FRONTEND_CACHE: dict | None = None
+
+
+def _frontend_data() -> dict:
+    """取前端静态数据。
+
+    **为什么不让 Python 直接加载 .js**：
+    前端数据是 ES 模块，而 Python 没有 JS 加载器 ——
+    `importlib.util.spec_from_file_location()` 对 .js 返回 None
+    （spec.loader 为 None），一执行就 AttributeError。
+
+    所以改成：先让 Node 导出成 JSON（scripts/dump_frontend_data.mjs），
+    Python 再读 JSON。Node 原生支持 ESM，package.json 里已有 "type": "module"。
+    """
+    global _FRONTEND_CACHE
+    if _FRONTEND_CACHE is not None:
+        return _FRONTEND_CACHE
+
+    dump_script = BACKEND_ROOT / "scripts" / "dump_frontend_data.mjs"
+    result = subprocess.run(
+        ["node", str(dump_script), str(_FRONTEND_JSON)],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+    )
+    if result.returncode != 0:
+        raise RuntimeError(
+            "导出前端数据失败（需要 Node.js）：\n" + (result.stderr or result.stdout)
+        )
+
+    _FRONTEND_CACHE = json.loads(_FRONTEND_JSON.read_text(encoding="utf-8"))
+    return _FRONTEND_CACHE
 
 from sqlalchemy import delete, select  # noqa: E402
 
@@ -179,16 +226,13 @@ def seed_content(db) -> None:
     数据源是前端的 data/*.js —— 保持两边内容一致，
     迁移后前端就能改成调 API 而不用重录内容。
     """
-    import importlib.util
-
     def load_js(name: str):
-        """加载前端 ES 模块数据（不启动 vite，只取数据）。"""
-        path = PROJECT_ROOT / "src" / "data" / f"{name}.js"
-        spec = importlib.util.spec_from_file_location(f"fe_{name}", path)
-        module = importlib.util.module_from_spec(spec)
-        # 前端数据文件不 import 其他前端模块，直接执行即可
-        spec.loader.exec_module(module)
-        return module
+        """加载前端 ES 模块数据。
+
+        实际是读 Node 导出的 JSON —— Python 不能执行 .js，详见
+        `_frontend_data()` 的说明。
+        """
+        return _Mod(_frontend_data()[name])
 
     pages = load_js("pages")
     content = load_js("content")
@@ -197,8 +241,10 @@ def seed_content(db) -> None:
     teacher = load_js("teacher")
 
     # ── 标签 ──
+    # dict.js 的 tagGroups 是对象数组 [{key,label,desc}]，不是 [key,label] 元组
     tag_ids: dict[tuple[str, str], str] = {}
-    for group_key, group_label in dict_mod.tagGroups:
+    for group in dict_mod.tagGroups:
+        group_key = group["key"]
         for name in dict_mod.tagOptions.get(group_key, []):
             tid = f"tag_{uuid.uuid4().hex[:8]}"
             db.add(

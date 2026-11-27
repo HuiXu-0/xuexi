@@ -21,9 +21,10 @@ from collections.abc import Iterator
 import pytest
 
 # 必须在导入 app 之前设置（config 用 lru_cache 缓存）
+# 默认指向**独立的测试库**，避免测试的 drop/create 冲掉开发数据。
 os.environ.setdefault(
     "DATABASE_URL",
-    "mysql+pymysql://campus:campus_pwd@127.0.0.1:3306/campus_platform?charset=utf8mb4",
+    "mysql+pymysql://campus:campus_pwd@127.0.0.1:3306/campus_platform_test?charset=utf8mb4",
 )
 os.environ.setdefault("SECRET_KEY", "test-secret-key-not-for-production")
 os.environ.setdefault("APP_ENV", "test")
@@ -104,6 +105,17 @@ def db(engine) -> Iterator:
     """
     Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)
+
+    # ORM 建不出 ngram 全文索引（那是 MySQL 专有语法），
+    # 手动补上，让检索测试走的是真实的中文全文检索路径而不是 LIKE 降级。
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                "ALTER TABLE resources "
+                "ADD FULLTEXT KEY ft_search_text (ft_search_text) WITH PARSER ngram"
+            )
+        )
+
     Session = sessionmaker(bind=engine, autoflush=False, future=True)
     session = Session()
     try:

@@ -17,7 +17,7 @@ import json
 from dataclasses import dataclass, field
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.core.errors import PermissionDenied
@@ -145,19 +145,28 @@ def visible_resource_filter(ctx: UserContext):
 
     **必须在检索阶段过滤，不能只在前端隐藏** ——
     标题、摘要、数量和作者信息本身也可能泄露隐私。
+
+    **返回约定**（两个调用方都按「单个 SQL 表达式或 None」使用）：
+    - 访客 → 单个等值条件
+    - 管理员 → **None**（不加限制）
+    - 普通登录用户 → 一组条件的 OR 组合
+
+    ⚠️ 早前这里返回的是 **list**，调用方直接 `.where(vis)` 会报
+    `ArgumentError: SQL expression for WHERE/HAVING role expected, got [...]`。
+    现在统一用 `or_(...)` 包成单个表达式。
     """
     if not ctx.is_authenticated:
         return Resource.visibility == "public"
 
-    clauses = [Resource.visibility.in_(["public", "campus"])]
     if ctx.is_admin:
         return None  # 管理员不加限制
 
+    clauses = [Resource.visibility.in_(["public", "campus"])]
     # 作者本人可见自己的 private / members 内容
     clauses.append(
         (Resource.author_id == ctx.user_id) & (Resource.visibility.in_(["private", "members"]))
     )
-    return clauses
+    return or_(*clauses)
 
 
 def require_permission(ctx: UserContext, code: str) -> None:
