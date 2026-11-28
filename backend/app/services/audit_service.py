@@ -9,6 +9,7 @@
 
 from __future__ import annotations
 
+import json
 import uuid
 from datetime import datetime
 from typing import Any
@@ -49,7 +50,9 @@ def record_audit(
         result=result,
         case_no=case_no,
         trace_id=trace_id,
-        detail=extra or {},
+        # detail 是 Text 列，必须存 JSON 字符串 ——
+        # 直接塞 dict 会报 "TypeError: dict can not be used as parameter"
+        detail=json.dumps(extra or {}, ensure_ascii=False),
         created_at=datetime.now(),
     )
     db.add(event)

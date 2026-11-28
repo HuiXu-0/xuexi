@@ -19,6 +19,7 @@ from pydantic import BaseModel, Field
 from app.api.deps import CurrentUser, DbSession, RequiredUser
 from app.core.envelope import AgentEnvelope, envelope, safe_fallback
 from app.models.moderation import ModerationCase
+from app.services import agent_llm
 from app.services import moderation_service as svc
 
 router = APIRouter(prefix="/api/moderation", tags=["moderation"])
@@ -69,8 +70,12 @@ def check(payload: CheckRequest, ctx: CurrentUser, db: DbSession) -> AgentEnvelo
         submitter_id=payload.submitter_id or ctx.user_id,
     )
 
-    # LLM 语义分析器暂未接入 —— 传入 None，走安全降级路径。
-    decision = svc.analyze_case(db, case)
+    # 语义分析器接入真实模型（设计书 §5.6）。
+    # 模型不可用时 analyze_case 内部会捕获并走安全降级 —— **不默认放行**。
+    def llm_analyzer(fields: dict[str, str]) -> dict[str, Any]:
+        return agent_llm.analyze_content(db, fields)
+
+    decision = svc.analyze_case(db, case, llm_analyzer=llm_analyzer)
 
     warnings: list[str] = []
     if decision.produced_by == "rule_engine":

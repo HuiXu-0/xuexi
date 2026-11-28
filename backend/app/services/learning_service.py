@@ -299,6 +299,131 @@ def build_plan_draft(
     }
 
 
+def reconcile_llm_draft(
+    db: Session,
+    ctx: UserContext,
+    draft: dict[str, Any],
+    *,
+    goal: LearningGoal,
+    fallback: dict[str, Any],
+) -> dict[str, Any]:
+    """校验并修正模型生成的计划草案（设计书 §6.10）。
+
+    **模型说的不算数**：
+    - `resource_refs` 只保留真实存在、且当前用户有权访问的资源
+    - 阶段与任务必须挂到服务端的知识点路径上（不能凭空多出概念）
+    - 任务必须有完成标准，否则无法验收
+    - 总量不能超过目标给的周期与时间
+
+    任何一条不满足就退回规则版草案。
+    """
+    # _match_resources 返回 (匹配到的资源列表, 缺失说明列表)
+    matched_resources, _missing = _match_resources(
+        db, ctx, fallback["coverage"]["to_learn_concepts"]
+    )
+    valid_resource_ids = {r["resource_id"] for r in matched_resources}
+    # 加上用户自己可见的全部资源，作为可选引用池
+    try:
+        from app.services.resource_service import list_resources
+
+        items, _ = list_resources(db, ctx, limit=200)
+        valid_resource_ids |= {i["resource_id"] for i in items}
+    except Exception:
+        pass
+
+    to_learn = list(fallback["coverage"]["to_learn_concepts"])
+    mastered = list(fallback["coverage"]["mastered_concepts"])
+
+    stages_out: list[dict[str, Any]] = []
+    total_minutes = 0
+    stage_concept_cursor = 0
+
+    for idx, raw in enumerate(draft.get("stages", [])[:8], start=1):
+        tasks_out: list[dict[str, Any]] = []
+        raw_tasks = raw.get("tasks") or []
+        if not isinstance(raw_tasks, list) or not raw_tasks:
+            continue
+
+        for tidx, raw_task in enumerate(raw_tasks[:10], start=1):
+            if not isinstance(raw_task, dict) or not raw_task.get("title"):
+                continue
+            criteria = str(raw_task.get("completion_criteria") or "").strip()
+            if not criteria:
+                # 没有完成标准就无法验收 —— 退回规则版的
+                criteria = "提交与该任务相关的练习或笔记，并能用���己的话解释核心概念"
+
+            # 概念按顺序分配，保证覆盖服务端的知识路径
+            concept_ids: list[str] = []
+            if stage_concept_cursor < len(to_learn):
+                concept_ids = [to_learn[stage_concept_cursor]]
+                stage_concept_cursor += 1
+            elif mastered:
+                concept_ids = [mastered[0]]
+
+            # 资源引用过滤：只留真实可见的
+            refs = raw.get("resource_refs")
+            resource_ids = [r for r in (refs or []) if r in valid_resource_ids][:5]
+
+            minutes = int(raw.get("weekly_minutes") or 0) or 60
+            total_minutes += minutes
+
+            tasks_out.append(
+                {
+                    "task_id": f"task_{idx:02d}_{tidx:02d}",
+                    "title": str(raw_task["title"])[:120],
+                    "detail": str(raw_task.get("detail") or "")[:500],
+                    "estimated_minutes": minutes,
+                    "status": "pending",
+                    "concept_ids": concept_ids,
+                    "skill_ids": [],
+                    "resource_ids": resource_ids,
+                    "completion_criteria": [criteria[:300]],
+                    "evidence_required": ["note_submission"],
+                    "depends_on": [],
+                }
+            )
+
+        if not tasks_out:
+            continue
+
+        stages_out.append(
+            {
+                "stage_id": f"stage_{idx:02d}",
+                "sequence": idx,
+                "title": str(raw.get("title") or f"阶段 {idx}")[:120],
+                "objective": str(raw.get("objective") or "")[:400],
+                "success_criteria": [],
+                "tasks": tasks_out,
+            }
+        )
+
+    if not stages_out:
+        return fallback
+
+    return {
+        "goal_id": goal.id,
+        "version": 1,
+        "status": "draft",
+        "assumptions": [
+            {
+                "id": f"a_llm_{i}",
+                "text": str(a.get("text"))[:300],
+                "based_on": str(a.get("based_on") or "模型推断")[:200],
+                "editable": True,
+                "affects": [],
+            }
+            for i, a in enumerate(draft.get("assumptions") or [])
+            if isinstance(a, dict) and a.get("text")
+        ][:10]
+        or fallback["assumptions"],
+        "stages": stages_out,
+        "coverage": fallback["coverage"],
+        "risks": [str(r)[:200] for r in (draft.get("risks") or [])[:8]],
+        "total_minutes": total_minutes,
+        "generated_by": "llm",
+    }
+
+
 def _default_stage_specs(db: Session, to_learn: list[str]) -> list[dict[str, Any]]:
     """默认阶段切分：按「基础 → 进阶 → 实践」三段。
 

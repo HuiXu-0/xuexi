@@ -25,6 +25,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
+from app.core.db import SessionLocal
 from app.core.errors import SafeFallbackRequired
 from app.models.moderation import (
     ModerationCase,
@@ -42,6 +43,23 @@ from app.services.moderation_rules import (
 )
 
 _settings = get_settings()
+
+
+def _active_model_name() -> str | None:
+    """当前生效的模型服务与模型名，写进决策记录做归因。
+
+    模型服务是管理员可切换的（llm_providers 表），所以这里动态取，
+    不能用环境变量里那个固定的 llm_model。
+    """
+    try:
+        from app.services.llm_service import get_active_provider
+
+        provider = get_active_provider(SessionLocal())
+        if provider is None:
+            return None
+        return f"{provider.code}:{provider.default_model}"
+    except Exception:
+        return None
 
 # ── 教师处置动作（产品设计书 §6.4，5 种）────────────────────
 TEACHER_ACTIONS = {
@@ -122,11 +140,16 @@ def analyze_case(
     det = check_deterministic(db, fields=fields, submitter_id=case.submitter_id)
 
     # ── 第二步：语义分析 ──
+    # 模型是否可用由「有没有可用的模型服务」决定，而不是环境变量 ——
+    # 现在模型服务是**管理员在界面上可切换**的（存在 llm_providers 表）。
+    # 分析器本身在没配好服务时会抛异常，被这里捕获后走安全降级。
     semantic: dict[str, Any] = {}
-    semantic_available = llm_analyzer is not None and _settings.llm_enabled
+    semantic_available = llm_analyzer is not None
     if semantic_available:
         try:
             semantic = llm_analyzer(fields)
+            if not isinstance(semantic, dict) or not semantic:
+                semantic_available = False
         except Exception:
             semantic = {}
             semantic_available = False
@@ -178,7 +201,7 @@ def analyze_case(
         ),
         reasoning=semantic.get("reasoning") or (det.hard_fail_detail if det.hard_fail else ""),
         rule_version=";".join(sorted({h.rule_version for h in det.hits if h.rule_version})),
-        model_version=_settings.llm_model if semantic_available else None,
+        model_version=_active_model_name() if semantic_available else None,
         prompt_version=None,
         confidence=semantic.get("confidence"),
         produced_by="agent" if semantic_available else "rule_engine",

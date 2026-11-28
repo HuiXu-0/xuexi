@@ -19,6 +19,7 @@ from pydantic import BaseModel, Field
 from app.api.deps import CurrentUser, DbSession
 from app.core.envelope import AgentEnvelope, envelope
 from app.models.resources import Resource
+from app.services import agent_llm, llm_service
 from app.services.resource_search_service import (
     SearchCandidate,
     coverage_of,
@@ -114,6 +115,37 @@ def _split_terms(text: str) -> list[str]:
     return terms
 
 
+def resolve_intent(db, query: str) -> tuple[IntentResult, list[str]]:
+    """解析查询意图。
+
+    **优先用模型**（设计书 §4.4：复杂查询需要意图理解），
+    模型不可用时回退到规则解析。
+
+    返回 (意图, 警告列表)。回退时会在警告里**如实说明**——
+    前端据此告诉用户「这次是按关键词直接搜的」，而不是假装模型工作了。
+    """
+    warnings: list[str] = []
+    try:
+        data = agent_llm.parse_intent(db, query)
+    except llm_service.LlmError as exc:
+        warnings.append(f"意图理解服务当前不可用，已按关键词直接检索（{exc}）。")
+        return parse_intent(query), warnings
+
+    intent = IntentResult(
+        topics=data["topics"],
+        resource_types=data["resource_types"],
+        difficulty=data["difficulty"],
+        expanded_terms=data["expanded_terms"],
+        intent_type=data["intent_type"],
+        is_complex=data["is_complex"],
+        clarification_needed=data["clarification_needed"],
+        clarification_question=data["clarification_question"],
+    )
+    if intent.clarification_needed and intent.clarification_question:
+        warnings.append(f"需要确认：{intent.clarification_question}")
+    return intent, warnings
+
+
 @router.post("/search", response_model=AgentEnvelope)
 def search(payload: SearchRequest, ctx: CurrentUser, db: DbSession) -> AgentEnvelope:
     """搜索。
@@ -121,12 +153,20 @@ def search(payload: SearchRequest, ctx: CurrentUser, db: DbSession) -> AgentEnve
     简单查询直通检索；复杂查询才需要多路编排（设计书 §4.6）。
     当前实现统一走混合检索 —— 编排逻辑在服务层，接口不变。
     """
-    intent = parse_intent(payload.query)
+    intent, intent_warnings = resolve_intent(db, payload.query)
 
+    # 用户显式指定的筛选条件 —— 严格遵守
     filters: dict[str, Any] = dict(payload.filters)
+    user_difficulty = filters.get("difficulty")
     filters["expanded_terms"] = intent.expanded_terms
-    if intent.difficulty and not filters.get("difficulty"):
-        filters["difficulty"] = intent.difficulty
+
+    # 模型推断的难度是**软信号**：平台内容常常没有难度标注，
+    # 直接拿它当硬过滤会把结果全滤空（实测：模型从「从零开始」推出
+    # beginner，而库里的 difficulty 全是 NULL）。
+    # 所以：用户没指定时才用模型的推断；若因此查不到，自动放宽并说明。
+    inferred_difficulty = intent.difficulty
+    if inferred_difficulty and not user_difficulty:
+        filters["difficulty"] = inferred_difficulty
 
     types = payload.resource_types or intent.resource_types
 
@@ -138,6 +178,24 @@ def search(payload: SearchRequest, ctx: CurrentUser, db: DbSession) -> AgentEnve
         filters=filters,
         limit=payload.limit,
     )
+
+    if not candidates and inferred_difficulty and not user_difficulty:
+        filters.pop("difficulty", None)
+        relaxed = hybrid_search(
+            db,
+            ctx,
+            payload.query,
+            resource_types=types or None,
+            filters=filters,
+            limit=payload.limit,
+        )
+        if relaxed:
+            candidates = relaxed
+            intent_warnings.append(
+                "平台内容多数未标注难度，已放宽「"
+                + "、".join(inferred_difficulty)
+                + "」难度条件后返回结果。"
+            )
 
     # 卡片由数据库填充，不接受模型生成（设计书 §4.5 第五步）
     groups: dict[str, list[dict[str, Any]]] = {}
@@ -154,7 +212,8 @@ def search(payload: SearchRequest, ctx: CurrentUser, db: DbSession) -> AgentEnve
 
     coverage = coverage_of(candidates, types or None)
 
-    warnings: list[str] = []
+    # warnings 先放意图解析阶段的降级说明，再叠加检索层面的提示
+    warnings: list[str] = list(intent_warnings)
     if coverage["missing_types"]:
         warnings.append(
             "本次未找到以下类型的结果：" + "、".join(coverage["missing_types"])
@@ -162,7 +221,14 @@ def search(payload: SearchRequest, ctx: CurrentUser, db: DbSession) -> AgentEnve
     if not candidates:
         warnings.append("没有找到匹配内容，可以尝试放宽关键词或换个说法。")
 
-    status = "success" if candidates else "partial"
+    # 意图理解降级过 → 结果质量打折，如实标 partial（设计书 §8.2）
+    degraded = any("意图理解服务当前不可用" in w for w in warnings)
+    if not candidates:
+        status = "partial"
+    elif degraded:
+        status = "partial"
+    else:
+        status = "success"
 
     return envelope(
         agent=AGENT_KEY,
@@ -174,6 +240,9 @@ def search(payload: SearchRequest, ctx: CurrentUser, db: DbSession) -> AgentEnve
                 "resource_types": intent.resource_types,
                 "expanded_terms": intent.expanded_terms,
                 "is_complex": intent.is_complex,
+                "clarification_needed": intent.clarification_needed,
+                "clarification_question": intent.clarification_question,
+                "degraded": degraded,
             },
             "groups": [
                 {"resource_type": rtype, "items": items} for rtype, items in groups.items()

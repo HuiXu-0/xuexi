@@ -15,7 +15,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.api.v1 import admin, auth, learning, moderation, resources, search
+from app.api.v1 import admin, auth, learning, llm_providers, moderation, resources, search
 from app.core.config import get_settings
 from app.core.errors import AppError
 from app.core.logging import setup_logging
@@ -60,6 +60,7 @@ app.include_router(moderation.router)
 app.include_router(learning.router)
 app.include_router(learning.agent_router)
 app.include_router(admin.router)
+app.include_router(llm_providers.router)
 
 
 # ── 统一错误处理（设计书 §3.4）──

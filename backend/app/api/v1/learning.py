@@ -15,6 +15,7 @@ from app.api.deps import CurrentUser, DbSession, RequiredUser
 from app.core.envelope import AgentEnvelope, envelope
 from app.core.errors import ConflictError
 from app.models.learning import LearningGoal, LearningPlan
+from app.services import agent_llm, llm_service
 from app.services import learning_service as svc
 from app.services.knowledge_service import concepts_for_skills
 
@@ -195,6 +196,10 @@ def generate_plan(
     """生成计划草案。
 
     **只返回草案，不落库** —— 必须经用户确认（§6.9 的 present_plan_for_confirmation）。
+
+    模型可用时由模型生成阶段与任务，但**服务端会重新校验一遍**
+    （§6.10）：只保留真实可见的资源，知识点路径由服务端决定。
+    模型不可用时退回规则版草案，并在 warnings 里说明。
     """
     from sqlalchemy import select
 
@@ -203,7 +208,9 @@ def generate_plan(
         raise HTTPException(status_code=404, detail="学习目标不存在")
 
     plan_concepts = concepts_for_skills(db, payload.required_skill_ids)
-    draft = svc.build_plan_draft(
+
+    # 规则版草案：既是兜底，也是模型草案的校验基准
+    fallback = svc.build_plan_draft(
         db,
         ctx,
         goal=goal,
@@ -213,24 +220,56 @@ def generate_plan(
         weekly_minutes=payload.weekly_available_minutes or goal.weekly_available_minutes,
     )
 
+    warnings: list[str] = []
+    draft = fallback
+    generated_by = "rules"
+
+    # ── 尝试用模型生成 ──
+    try:
+        skill_names = [svc._concept_name(db, cid) for cid in plan_concepts]
+        # _match_resources 返回 (匹配到的资源列表, 缺失说明列表)
+        matched_resources, _missing = svc._match_resources(
+            db, ctx, fallback["coverage"]["to_learn_concepts"]
+        )
+        candidate_ids = [r["resource_id"] for r in matched_resources]
+        raw = agent_llm.generate_plan_draft(
+            db,
+            goal_title=goal.title,
+            goal_description=goal.goal_type,
+            weekly_minutes=payload.weekly_available_minutes or goal.weekly_available_minutes or 360,
+            max_weeks=12,
+            skill_names=[n for n in skill_names if n],
+            resource_ids=candidate_ids,
+        )
+        reconciled = svc.reconcile_llm_draft(db, ctx, raw, goal=goal, fallback=fallback)
+        if reconciled.get("generated_by") == "llm":
+            draft = reconciled
+            generated_by = "llm"
+    except llm_service.LlmError as exc:
+        warnings.append(f"计划生成模型当前不可用，已改用规则版阶段划分（{exc}）。")
+
     problems = svc.validate_plan(db, ctx, draft, goal)
 
-    warnings: list[str] = []
     status = "success"
     if problems:
-        # 校验失败：返回具体问题，不无限调用模型（§6.10）
         warnings.extend(problems)
+        status = "partial"
+    if any("不可用" in w for w in warnings):
         status = "partial"
     if draft["assumptions"]:
         warnings.append(
-            "计划包含假设，用户修改后可只重算受影响阶段：" +
-            "、".join(a["text"] for a in draft["assumptions"])
+            "计划包含假设，用户修改后可只重算受影响阶段："
+            + "、".join(a["text"] for a in draft["assumptions"])
         )
 
     return envelope(
         agent=AGENT_KEY,
         status=status,
-        data={"draft": draft, "validation_errors": problems},
+        data={
+            "draft": draft,
+            "validation_errors": problems,
+            "generated_by": generated_by,
+        },
         warnings=warnings,
     )
 

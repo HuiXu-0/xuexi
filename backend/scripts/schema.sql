@@ -141,8 +141,22 @@ CREATE TABLE IF NOT EXISTS resources (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- 中文全文索引：ngram 解析器（MySQL 8.0.16+ 的 InnoDB FULLTEXT 必需）
-ALTER TABLE resources
-  ADD FULLTEXT KEY ft_search_text (ft_search_text) WITH PARSER ngram;
+-- 用动态 SQL 包一层，保证脚本**可重复执行**：
+-- 索引已存在时跳过，否则 ADD FULLTEXT 会报 1061 并中断后面的建表。
+SET @ft_sql = (
+  SELECT IF(
+    (SELECT COUNT(*) FROM information_schema.STATISTICS
+      WHERE table_schema = DATABASE()
+        AND table_name = 'resources'
+        AND index_name = 'ft_search_text') > 0,
+    'DO 0',
+    'ALTER TABLE resources
+       ADD FULLTEXT KEY ft_search_text (ft_search_text) WITH PARSER ngram'
+  )
+);
+PREPARE ft_stmt FROM @ft_sql;
+EXECUTE ft_stmt;
+DEALLOCATE PREPARE ft_stmt;
 
 CREATE TABLE IF NOT EXISTS resource_notes (
   resource_id VARCHAR(64) NOT NULL,
@@ -671,4 +685,29 @@ CREATE TABLE IF NOT EXISTS agent_runs (
   PRIMARY KEY (id),
   KEY ix_runs_agent (agent_name, created_at),
   KEY ix_runs_request (request_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ── 模型服务（LLM Provider）────────────────────────────────────
+-- 管理员可在管理端切换平台使用的模型服务（设计书 §7.8 的延伸）。
+-- api_key_enc 存的是**加密后**的密钥（服务层用应用 SECRET_KEY 派生密钥加密），
+-- 绝不明文落库，接口只回掩码。
+-- protocol：anthropic（/v1/messages）或 openai（/v1/chat/completions）
+CREATE TABLE IF NOT EXISTS llm_providers (
+  id              VARCHAR(64)  NOT NULL,
+  code            VARCHAR(64)  NOT NULL,
+  name            VARCHAR(128) NOT NULL,
+  protocol        VARCHAR(16)  NOT NULL DEFAULT 'openai',
+  base_url        VARCHAR(512) NOT NULL DEFAULT '',
+  api_key_enc     TEXT         NOT NULL,
+  default_model   VARCHAR(128) NOT NULL DEFAULT '',
+  enabled         TINYINT(1)   NOT NULL DEFAULT 1,
+  is_active       TINYINT(1)   NOT NULL DEFAULT 0,
+  is_builtin      TINYINT(1)   NOT NULL DEFAULT 0,
+  sort_order      INT          NOT NULL DEFAULT 100,
+  note            TEXT         NULL,
+  created_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_llm_provider_code (code),
+  KEY ix_llm_providers_active (is_active)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

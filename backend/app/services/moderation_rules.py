@@ -68,7 +68,9 @@ def _current_version(db: Session, rule_id: str) -> str | None:
         )
         .limit(1)
     ).scalar_one_or_none()
-    return f"{rule.id}@{version.version}" if version else rule_id
+    # 注意是 rule_id —— 早前误写成 rule.id，而该作用域里没有 rule 变量，
+    # 一旦某条规则存在版本记录就会抛 NameError。
+    return f"{rule_id}@{version.version}" if version else rule_id
 
 
 def check_deterministic(

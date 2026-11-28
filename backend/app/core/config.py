@@ -11,7 +11,11 @@ from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-BACKEND_ROOT = Path(__file__).resolve().parent.parent
+# backend/ 目录 —— 注意是三�� parent：
+#   config.py → app/core/config.py → app/core → app → backend
+# 早前写成 .parent.parent 得到的是 backend/app，
+# 导致 .env 一直没被读到（SECRET_KEY / DATABASE_URL 全在用代码默认值）。
+BACKEND_ROOT = Path(__file__).resolve().parent.parent.parent
 
 
 class Settings(BaseSettings):
@@ -70,4 +74,13 @@ class Settings(BaseSettings):
 
 @lru_cache
 def get_settings() -> Settings:
-    return Settings()
+    settings = Settings()
+
+    # 安全兜底：生产环境不允许用默认密钥。
+    # 早前 .env 路径算错导致 SECRET_KEY 一直用默认值，这里补一道显式检查。
+    if settings.app_env == "production" and settings.secret_key == "dev-only-change-me":
+        raise RuntimeError(
+            "生产环境必须配置 SECRET_KEY（写在 backend/.env），"
+            "生成方式：python -c \"import secrets;print(secrets.token_urlsafe(48))\""
+        )
+    return settings

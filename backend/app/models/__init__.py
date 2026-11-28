@@ -5,6 +5,7 @@
 """
 
 from app.models.audit import AuditEvent
+from app.models.llm_providers import LlmProvider
 from app.models.learning import (
     CapabilityEvidence,
     KnowledgeConcept,
@@ -58,6 +59,7 @@ from app.models.users import (
 
 __all__ = [
     "AuditEvent",
+    "LlmProvider",
     "User",
     "Role",
     "Permission",
