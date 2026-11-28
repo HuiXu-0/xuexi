@@ -116,10 +116,35 @@ async def handle_unexpected(request: Request, exc: Exception) -> JSONResponse:
 @app.get("/api/health")
 def health() -> dict[str, object]:
     """健康检查。同时报告 LLM 与向量检索是否已配置 ——
-    没配置时相关接口会走安全降级（设计书 §9.4）。"""
+    没配置时相关接口会走安全降级（设计书 §9.4）。
+
+    **模型服务是否可用要从数据库判断** —— 它现在是管理员在界面上可切换的
+    （llm_providers 表），不再是环境变量说了算。
+    """
+    llm_state: dict[str, object] = {"available": False, "provider": None, "model": None}
+    try:
+        from app.core.db import SessionLocal
+        from app.services.llm_service import get_active_provider
+
+        db = SessionLocal()
+        try:
+            provider = get_active_provider(db)
+            if provider is not None:
+                llm_state = {
+                    "available": bool(provider.api_key_enc and provider.default_model),
+                    "provider": provider.code,
+                    "model": provider.default_model,
+                }
+        finally:
+            db.close()
+    except Exception:
+        pass
+
     return {
         "status": "ok",
         "env": settings.app_env,
-        "llm_enabled": settings.llm_enabled,
+        "llm_enabled": bool(llm_state["available"]),
+        "llm_provider": llm_state["provider"],
+        "llm_model": llm_state["model"],
         "vector_search_enabled": settings.embedding_enabled,
     }
