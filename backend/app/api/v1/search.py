@@ -37,6 +37,9 @@ class SearchRequest(BaseModel):
     filters: dict[str, Any] = Field(default_factory=dict)
     resource_types: list[str] = Field(default_factory=list)
     limit: int = Field(default=20, ge=1, le=100)
+    # fast：只用规则解析意图，瞬时返回（搜索框下拉默认走这个）
+    # llm ：用模型理解意图，更准但要等模型（10-20 秒），用于「深度搜索」
+    mode: str = Field(default="fast", pattern="^(fast|llm)$")
 
 
 class IntentResult(BaseModel):
@@ -115,16 +118,21 @@ def _split_terms(text: str) -> list[str]:
     return terms
 
 
-def resolve_intent(db, query: str) -> tuple[IntentResult, list[str]]:
+def resolve_intent(db, query: str, mode: str = "fast") -> tuple[IntentResult, list[str]]:
     """解析查询意图。
 
-    **优先用模型**（设计书 §4.4：复杂查询需要意图理解），
+    **mode=fast（默认）**：只用规则解析 —— 搜索框边打边搜，必须瞬时返回。
+    **mode=llm**：优先用模型（设计书 §4.4：复杂查询需要意图理解），
     模型不可用时回退到规则解析。
 
     返回 (意图, 警告列表)。回退时会在警告里**如实说明**——
     前端据此告诉用户「这次是按关键词直接搜的」，而不是假装模型工作了。
     """
     warnings: list[str] = []
+
+    if mode != "llm":
+        return parse_intent(query), warnings
+
     try:
         data = agent_llm.parse_intent(db, query)
     except llm_service.LlmError as exc:
@@ -153,7 +161,7 @@ def search(payload: SearchRequest, ctx: CurrentUser, db: DbSession) -> AgentEnve
     简单查询直通检索；复杂查询才需要多路编排（设计书 §4.6）。
     当前实现统一走混合检索 —— 编排逻辑在服务层，接口不变。
     """
-    intent, intent_warnings = resolve_intent(db, payload.query)
+    intent, intent_warnings = resolve_intent(db, payload.query, payload.mode)
 
     # 用户显式指定的筛选条件 —— 严格遵守
     filters: dict[str, Any] = dict(payload.filters)

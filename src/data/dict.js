@@ -192,6 +192,7 @@ export const navByRole = {
         { route: 'adminFeedback', label: '反馈与建议' },
         { route: 'adminRules', label: '审核规则' },
         { route: 'adminAgents', label: 'Agent 管理' },
+        { route: 'adminModels', label: '模型服务' },
         { route: 'adminAudit', label: '操作审计' },
         { route: 'adminConfig', label: '基础配置' },
       ],

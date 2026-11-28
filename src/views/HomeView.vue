@@ -14,7 +14,7 @@ import {
 } from '../data/content.js'
 import { useSearch, runSearch, clearSearch } from '../composables/useSearch.js'
 import { showToast } from '../composables/useToast.js'
-import { runAgent, AGENT_KEYS, agentRuntime } from '../services/agentRuntime.js'
+import { AGENT_KEYS, agentRuntime } from '../services/agentRuntime.js'
 
 const router = useRouter()
 const search = useSearch()
@@ -74,21 +74,26 @@ const filteredDiscover = computed(() =>
     : homeDiscover.filter((d) => d.filterType === discoverFilter.value)
 )
 
-function submitSearch() {
+async function submitSearch(options = {}) {
   const q = query.value.trim()
   if (!q) {
     showToast('先输入关键词或描述你的学习目标。')
     document.getElementById('globalSearch')?.focus()
     return
   }
-  runSearch(q)
   /*
-   * 接入搜索 Agent（设计书 §8.2）。
-   * Agent 负责理解自然语言意图、扩展相关概念并组织跨类别结果；
-   * 它必须建立在真实内容之上，不能编造不存在的资源。
-   * 当前为预留接口，真实实现接入后此处会自动显示 Agent 的处理状态。
+   * 搜索走真实后端（设计书 §16.2）。
+   * 默认 fast 模式：规则解析意图，瞬时返回。
+   * 深度搜索才让模型参与理解意图（慢一些，但更准）。
    */
-  runAgent(AGENT_KEYS.search, { query: q, count: search.count })
+  const deep = !!options.deep
+  if (deep) showToast('正在用模型理解你的需求，可能需要十几秒…')
+  await runSearch(q, { deep })
+}
+
+/** 深度搜索：模型参与意图理解 */
+function deepSearch() {
+  submitSearch({ deep: true })
 }
 
 function applySuggestion(q) {
@@ -194,14 +199,36 @@ function discoverAll() {
 
               <!--
                 Agent 承载区：设计书 §8.2 规定搜索结果由「全局搜索与发现 Agent」
-                负责组织。这里先接入调用接口并展示其状态，
-                真实 Agent 接上后这段会自动显示真实结果。
+                负责组织。现在接的是真实后端，这里如实显示当前结果来自哪一边。
               -->
               <div class="search-agent-bar" :class="agentState.status">
-                <AppIcon :name="agentState.status === 'loading' ? 'i-clock' : 'i-spark'" />
-                <span v-if="agentState.status === 'loading'">搜索 Agent 正在理解你的需求…</span>
-                <span v-else-if="agentState.status === 'ready'">结果由搜索 Agent 按内容类型组织</span>
-                <span v-else>搜索 Agent 待接入，当前为普通关键词检索结果</span>
+                <AppIcon :name="search.loading ? 'i-clock' : 'i-spark'" />
+                <span v-if="search.loading">正在检索平台内容…</span>
+                <span v-else-if="search.source === 'remote'">
+                  结果来自平台真实条目（按内容类型组织）
+                </span>
+                <span v-else>后端暂不可用，当前为本地关键词检索结果</span>
+              </div>
+
+              <!-- 深度搜索：让模型参与意图理解（更准，但要等模型） -->
+              <div class="search-agent-actions">
+                <button
+                  class="search-deep-btn"
+                  type="button"
+                  :disabled="search.loading || !query.trim()"
+                  @click="deepSearch"
+                >
+                  <AppIcon name="i-spark" />
+                  深度搜索（让模型理解需求）
+                </button>
+                <span v-if="search.agentStatus" class="search-agent-status">
+                  状态：{{ search.agentStatus }}
+                </span>
+              </div>
+
+              <!-- 后端的降级/提示说明，如实展示，不隐藏 -->
+              <div v-if="search.warnings?.length" class="search-agent-warnings">
+                <span v-for="(w, i) in search.warnings" :key="i">{{ w }}</span>
               </div>
 
               <div v-if="search.results.length" class="search-dropdown-list">

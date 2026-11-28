@@ -73,6 +73,15 @@ export const adminNav = [
     actions: ['启用/停用', '设置适用范围', '抽查结果', '记录配置变化'],
   },
   {
+    key: 'models',
+    route: 'adminModels',
+    icon: 'i-spark',
+    title: '模型服务管理',
+    short: '模型服务',
+    desc: '选择平台当前生效的大模型服务：内置、DeepSeek、MiniMax 或自定义。切换会立刻改变三个 Agent 的行为，需写明理由并留痕。',
+    actions: ['切换服务', '填写密钥', '测试连通', '查看掩码'],
+  },
+  {
     key: 'audit',
     route: 'adminAudit',
     icon: 'i-file',

@@ -1,23 +1,33 @@
 /**
- * Agent 调用契约（预留层）。
+ * Agent 调用契约。
  *
  * 设计书 §8 定义了三个职责独立的 Agent：
  *   A 全局搜索与发现 Agent　§8.2
  *   B 内容审核 Agent　　　　§8.3
  *   C 个人学习规划 Agent　　§8.4
  *
- * 共同原则（§8.1）：
- *   1. 只使用用户有权访问的内容
- *   2. 不编造不存在的课程、案例、竞赛、链接或官方信息
- *   3. 清晰区分平台真实内容、外部来源信息和模型生成的建议
- *   4. 高风险或不确定结果要提示用户核实或转人工处理
- *   5. 不自行提升权限、不自行改变平台规则、不自行封禁用户
- *   6. 对涉及用户内容的处理遵守平台可见范围和隐私规则
- *   7. 用户可反馈错误结果、误判或不合适的推荐
+ * ## 响应形状以设计书 §8.2 的 envelope 为准
  *
- * ⚠️ 本文件只定义**接口形状**，不实现任何 Agent 逻辑。
- * 后续接入真实 Agent 时，只需在 agentRuntime.js 中实现 runAgent()，
- * 上层组件无需改动 —— 这就是预留的目的。
+ *     {
+ *       request_id: "req_xxx",
+ *       agent: "search_agent",
+ *       status: "success",
+ *       data: {},
+ *       warnings: [],
+ *       trace_id: "trace_xxx"
+ *     }
+ *
+ * status 六种（设计书 §8.2）：
+ *   success           正常完成
+ *   partial           部分完成（有降级或部分结果缺失）
+ *   needs_user_input  需要用户补充信息
+ *   pending_review    需要人工复核
+ *   failed            **内容被拒 / 调用失败**
+ *   safe_fallback     **服务不可用，已按安全策略降级**
+ *
+ * **failed 与 safe_fallback 必须分开渲染**（设计书 §8.2.1）：
+ * 前者是「内容有问题」，后者是「服务挂了」。混成同一个提示，
+ * 就是在跟用户说错话。
  */
 
 /** Agent 标识，与设计书 §8 的三个 Agent 对应 */
@@ -25,6 +35,23 @@ export const AGENT_KEYS = {
   search: 'search',
   moderation: 'moderation',
   planner: 'planner',
+}
+
+/** 后端返回的 agent 字段取值 */
+export const AGENT_NAMES = {
+  search: 'search_agent',
+  moderation: 'moderation_agent',
+  planner: 'learning_planning_agent',
+}
+
+/** envelope 的六种 status */
+export const AGENT_STATUS = {
+  SUCCESS: 'success',
+  PARTIAL: 'partial',
+  NEEDS_USER_INPUT: 'needs_user_input',
+  PENDING_REVIEW: 'pending_review',
+  FAILED: 'failed',
+  SAFE_FALLBACK: 'safe_fallback',
 }
 
 /**
@@ -63,45 +90,50 @@ export const agentMeta = {
 }
 
 /**
- * 调用 Agent 的统一入参。
- * @param {string} agentKey AGENT_KEYS 之一
- * @param {object} payload  业务参数（搜索词、内容、规划输入等）
+ * 构造一个空 envelope。
+ *
+ * 后端不可达时用它兜底 —— 界面照常能渲染，
+ * 只是明确标成 safe_fallback，而不是假装一切正常。
  */
-export function buildAgentRequest(agentKey, payload = {}) {
+export function emptyEnvelope(agentKey, reason = '后端服务当前不可用，已按本地规则处理。') {
   return {
-    agentKey,
-    payload,
-    /* 调用上下文：真实接入时后端需要据此做权限校验 */
-    context: {
-      role: 'student',
-      visibleScope: 'public',
-      requestId: `demo-${Date.now()}`,
+    request_id: `local-${Date.now()}`,
+    agent: AGENT_NAMES[agentKey] || agentKey,
+    status: AGENT_STATUS.SAFE_FALLBACK,
+    data: {
+      fallback: true,
+      reason,
+      actual_behavior: '已退回本地静态数据，结果可能不完整',
     },
-    /* 时间戳便于后端日志与耗时统计 */
-    issuedAt: new Date().toISOString(),
+    warnings: [reason],
+    trace_id: `local-${Date.now()}`,
   }
 }
 
 /**
- * 调用 Agent 的统一返回值形状。
- * 前端只依赖这个形状，具体实现替换时界面无需改动。
+ * 状态的中文说明。
+ *
+ * **failed 与 safe_fallback 的文案必须不同**（设计书 §8.2.1）。
  */
-export function emptyAgentResponse(agentKey) {
-  return {
-    agentKey,
-    status: 'unavailable',
-    /* 是否由真实 Agent 处理；原型阶段为 false，界面会显示"未接入" */
-    handledByAgent: false,
-    /* 真实内容条目（必须对应平台中真实存在且用户有权访问的条目） */
-    items: [],
-    /* 模型的解释性说明，与 items 分离，便于界面标注"这是生成建议" */
-    notes: '',
-    /* Agent 给出的后续建议，例如"放宽筛选""探索相近标签" */
-    suggestions: [],
-    /* 需要转人工处理时的提示 */
-    needsHumanReview: false,
-    message: '当前原型未接入该 Agent，以下为普通功能结果。',
+export const statusText = {
+  success: '已完成',
+  partial: '部分完成',
+  needs_user_input: '需要你补充信息',
+  pending_review: '已转人工复核',
+  failed: '未通过',
+  safe_fallback: '服务降级',
+}
+
+/** 把 envelope 里的结果条目取出来（不同 Agent 的 data 结构不同） */
+export function extractItems(envelope) {
+  if (!envelope?.data) return []
+  const d = envelope.data
+  if (Array.isArray(d)) return d
+  if (Array.isArray(d.items)) return d.items
+  if (Array.isArray(d.groups)) {
+    return d.groups.flatMap((g) => g.items || [])
   }
+  return []
 }
 
 /**

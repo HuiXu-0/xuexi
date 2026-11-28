@@ -1,7 +1,7 @@
 <script setup>
 import { computed } from 'vue'
 import AppIcon from './AppIcon.vue'
-import { agentMeta, agentSlotDescription } from '../services/agentContract.js'
+import { agentMeta, agentSlotDescription, statusText as statusTextMap } from '../services/agentContract.js'
 import { agentRuntime } from '../services/agentRuntime.js'
 
 /**
@@ -36,8 +36,20 @@ const statusText = computed(() => {
     case 'error':
       return '调用异常'
     default:
-      return '待接入'
+      return '未调用'
   }
+})
+
+/**
+ * envelope 的 status → 中文说明（设计书 §8.2.1）。
+ *
+ * **failed 与 safe_fallback 必须分开**：
+ * 前者是「内容有问题」，后者是「服务挂了」。混成一句话就是在跟用户说错话。
+ */
+const envelopeStatus = computed(() => {
+  const s = state.value.lastResponse?.status
+  if (!s) return ''
+  return statusTextMap[s] || s
 })
 </script>
 
@@ -47,7 +59,9 @@ const statusText = computed(() => {
       <span class="agent-slot-icon"><AppIcon :name="meta.icon" /></span>
       <div class="agent-slot-title">
         <strong>{{ title || meta.title }}</strong>
-        <span class="agent-slot-status" :class="state.status">{{ statusText }}</span>
+        <span class="agent-slot-status" :class="state.status">
+          {{ statusText }}<template v-if="envelopeStatus"> · {{ envelopeStatus }}</template>
+        </span>
       </div>
     </div>
 

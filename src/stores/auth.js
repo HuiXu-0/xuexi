@@ -97,6 +97,7 @@ export function canAccess(routeName) {
     'adminFeedback',
     'adminRules',
     'adminAgents',
+    'adminModels',
     'adminAudit',
     'adminConfig',
   ]

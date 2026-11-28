@@ -10,6 +10,8 @@ import {
 import { homeCompetitions, homeDiscover, homeActivities, typeLabels } from '../data/content.js'
 import { visibilityMeta } from '../data/dict.js'
 import { demoStore } from '../stores/demo.js'
+import { agentRequest } from '../services/api.js'
+import { AGENT_STATUS } from '../services/agentContract.js'
 
 /**
  * 全站搜索索引。
@@ -32,7 +34,28 @@ const searchState = reactive({
   active: false,
   /** 无结果时的调整建议（由调用方或 Agent 补充） */
   suggestions: [],
+  /** 结果来源：remote（后端）/ local（本地静态数据兜底） */
+  source: 'local',
+  /** 正在请求后端 */
+  loading: false,
+  /** 后端返回的提示（降级说明、无结果建议等） */
+  warnings: [],
+  /** 后端 envelope 的 status */
+  agentStatus: '',
+  /** 后端不可达时的原因 */
+  error: '',
 })
+
+/** 后端 resource_type → 前端展示用的 type */
+const backendTypeToUi = {
+  platform_note: 'note',
+  project_case: 'case',
+  external_resource: 'resource',
+  competition: 'competition',
+  official_notice: 'notice',
+  learning_group: 'group',
+  forum_post: 'post',
+}
 
 /** 类型 → 目标路由 */
 const routeByType = {
@@ -237,7 +260,16 @@ function relevance(item, q) {
   return score
 }
 
-export function runSearch(query) {
+/**
+ * 搜索。
+ *
+ * 优先调后端（真实检索 + 权限过滤）；后端不可用时退回本地静态索引，
+ * 并在 state.error / state.source 里**如实说明**当前用的是哪一边。
+ *
+ * @param {string} query 关键词
+ * @param {object} options { deep } deep=true 时让模型参与意图理解（慢，但更准）
+ */
+export async function runSearch(query, options = {}) {
   const q = query.trim().toLowerCase()
   searchState.query = query
   if (!q) {
@@ -245,11 +277,77 @@ export function runSearch(query) {
     return
   }
 
+  searchState.loading = true
+  searchState.error = ''
+
+  try {
+    const envelope = await agentRequest('search', {
+      query,
+      limit: 20,
+      mode: options.deep ? 'llm' : 'fast',
+    })
+    applyRemoteResults(envelope, query)
+  } catch (err) {
+    /* 后端不可达 → 本地兜底 */
+    searchState.source = 'local'
+    searchState.agentStatus = AGENT_STATUS.SAFE_FALLBACK
+    searchState.warnings = [err?.message || '后端不可用，已按本地关键词检索。']
+    searchState.error = err?.message || '后端不可用'
+    applyLocalResults(query)
+  } finally {
+    searchState.loading = false
+  }
+}
+
+/** 深度搜索：让模型参与意图理解。 */
+export function runDeepSearch(query) {
+  return runSearch(query, { deep: true })
+}
+
+/** 后端返回的结果 → 前端展示形状 */
+function applyRemoteResults(envelope, query) {
+  const groups = envelope?.data?.groups || []
+  const items = groups.flatMap((g) => g.items || [])
+
+  searchState.source = 'remote'
+  searchState.agentStatus = envelope?.status || ''
+  searchState.warnings = envelope?.warnings || []
+  searchState.title = `“${query}” 的搜索结果`
+  searchState.count = items.length
+  searchState.results = items.map((it) => {
+    const uiType = backendTypeToUi[it.resource_type] || 'note'
+    return {
+      heading: it.title || '',
+      desc: it.summary || '',
+      type: uiType,
+      typeLabel: typeLabels[uiType] || '学习内容',
+      tags: it.tags || [],
+      author: it.author_id ? `作者 ${it.author_id}` : it.source_note || '平台整理',
+      updatedAt: (it.updated_at || '').slice(0, 10) || '近期更新',
+      scope: it.visibility || 'public',
+      scopeLabel: (visibilityMeta(it.visibility || 'public') || {}).label || '公开',
+      route: routeByType[uiType] || 'home',
+      score: it.score ?? 0,
+      channels: it.matched_channels || {},
+      resourceId: it.resource_id,
+    }
+  })
+  searchState.suggestions = items.length
+    ? []
+    : (envelope?.data?.coverage?.missing_types || []).map((t) => ({
+        text: `看看「${typeLabels[t] || t}」方向的条目`,
+        query: typeLabels[t] || t,
+      }))
+  searchState.active = true
+}
+
+/** 本地静态索引兜底 */
+function applyLocalResults(query) {
   const index = buildIndex()
 
   const scored = index
     .map((item) => {
-      const rel = relevance(item, q)
+      const rel = relevance(item, query.trim().toLowerCase())
       return {
         item,
         score: rel * 1.6 + qualitySignal(item.type) * 0.5 + recencyScore(item.updatedAt) * 0.35,
@@ -272,12 +370,7 @@ export function runSearch(query) {
   }))
 
   /* 无结果时给调整建议（§8.2.4：不编造结果，只给可行的下一步） */
-  if (!scored.length) {
-    searchState.suggestions = buildSuggestions(q, index)
-  } else {
-    searchState.suggestions = []
-  }
-
+  searchState.suggestions = scored.length ? [] : buildSuggestions(query.trim().toLowerCase(), index)
   searchState.active = true
 }
 
@@ -314,6 +407,11 @@ export function clearSearch() {
   searchState.count = 0
   searchState.title = '搜索结果'
   searchState.suggestions = []
+  searchState.source = 'local'
+  searchState.loading = false
+  searchState.warnings = []
+  searchState.agentStatus = ''
+  searchState.error = ''
 }
 
 export function useSearch() {

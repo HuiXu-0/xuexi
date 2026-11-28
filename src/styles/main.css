@@ -430,6 +430,15 @@
   .search-agent-bar .icon { width: 13px; height: 13px; flex: 0 0 auto; color: var(--green); }
   .search-agent-bar.loading { color: var(--green); }
   .search-agent-bar.ready { color: var(--green); }
+  /* 深度搜索入口 + 后端状态 */
+  .search-agent-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 8px 14px; border-bottom: 1px solid var(--line); }
+  .search-deep-btn { display: inline-flex; align-items: center; gap: 5px; padding: 5px 10px; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--surface); color: var(--text-soft); font-size: var(--fs-chip, 11px); cursor: pointer; transition: border-color .15s, color .15s; }
+  .search-deep-btn .icon { width: 13px; height: 13px; }
+  .search-deep-btn:hover:not(:disabled) { border-color: var(--green); color: var(--green); }
+  .search-deep-btn:disabled { opacity: .5; cursor: not-allowed; }
+  .search-agent-status { color: var(--text-faint); font-size: var(--fs-chip, 11px); }
+  /* 后端返回的降级/提示说明 —— 如实展示，不隐藏 */
+  .search-agent-warnings { display: flex; flex-direction: column; gap: 3px; padding: 7px 14px; border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--surface-tint) 40%, var(--surface)); color: var(--text-faint); font-size: var(--fs-chip, 11px); line-height: 1.5; }
   /* 搜索结果元信息：标签 / 作者 / 更新时间 / 可见范围（设计书 §13.2） */
   .search-dropdown-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
   .search-meta-tag { padding: 1px 5px; border-radius: 4px; background: var(--surface-tint); color: var(--text-faint); font-size: 9px; }
